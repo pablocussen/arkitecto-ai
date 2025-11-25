@@ -1,6 +1,7 @@
 import firebase_admin as fb_admin
 from firebase_admin import credentials, auth, firestore
 import os
+import json
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -19,10 +20,27 @@ def _initialize():
         _initialized = True
     except ValueError:
         # Not initialized, try to initialize
-        cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        cred = None
 
-        if cred_path and os.path.exists(cred_path):
-            cred = credentials.Certificate(cred_path)
+        # Option 1: JSON credentials from environment variable
+        creds_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+        if creds_json:
+            try:
+                creds_dict = json.loads(creds_json)
+                cred = credentials.Certificate(creds_dict)
+                print("✅ Firebase credentials loaded from environment variable")
+            except Exception as e:
+                print(f"⚠️ Error parsing credentials JSON: {e}")
+
+        # Option 2: File path
+        if not cred:
+            cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+            if cred_path and os.path.exists(cred_path):
+                cred = credentials.Certificate(cred_path)
+                print("✅ Firebase credentials loaded from file")
+
+        # Initialize with credentials or try default
+        if cred:
             fb_admin.initialize_app(cred)
             _initialized = True
         else:
