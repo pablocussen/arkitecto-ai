@@ -31,7 +31,8 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git config:*)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "Bash(LISTO_PARA_DEPLOY.md)"
     ],
     "deny": [],
     "ask": []
