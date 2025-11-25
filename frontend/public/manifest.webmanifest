@@ -1,0 +1,56 @@
+{
+  "name": "Arkitecto AI",
+  "short_name": "Arkitecto",
+  "description": "Análisis inteligente de presupuestos de construcción usando IA",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["business", "productivity", "utilities"],
+  "shortcuts": [
+    {
+      "name": "Nuevo Análisis",
+      "short_name": "Analizar",
+      "description": "Capturar nueva imagen para análisis",
+      "url": "/?action=new",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Modo Visión",
+      "short_name": "Visión",
+      "description": "Abrir herramientas AR y renderizado",
+      "url": "/?tab=vision",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ],
+  "permissions": [
+    "camera",
+    "gyroscope",
+    "accelerometer",
+    "magnetometer"
+  ],
+  "features": [
+    "xr-spatial-tracking"
+  ]
+}
