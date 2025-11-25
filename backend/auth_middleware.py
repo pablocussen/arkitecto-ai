@@ -1,20 +1,21 @@
-from fastapi import Request, HTTPException
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseFunction
-from starlette.responses import Response
+from typing import Callable
+from fastapi import Request
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response, JSONResponse
 from firebase_admin import auth
 
 # List of paths that do not require authentication
 PUBLIC_PATHS = ["/docs", "/openapi.json", "/", "/analyze_budget", "/generate_sketch"]
 
 class FirebaseAuthMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next: RequestResponseFunction) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Check if the path is public
         if request.url.path in PUBLIC_PATHS:
             return await call_next(request)
 
         auth_header = request.headers.get("Authorization")
         if not auth_header:
-            return HTTPException(status_code=401, detail="Not authenticated")
+            return JSONResponse(status_code=401, content={"detail": "Not authenticated"})
 
         try:
             # Expecting "Bearer <token>"
@@ -22,7 +23,7 @@ class FirebaseAuthMiddleware(BaseHTTPMiddleware):
             decoded_token = auth.verify_id_token(id_token)
             request.state.user = decoded_token
         except Exception as e:
-            return HTTPException(status_code=401, detail=f"Invalid authentication credentials: {e}")
+            return JSONResponse(status_code=401, content={"detail": f"Invalid authentication credentials: {str(e)}"})
 
         response = await call_next(request)
         return response
