@@ -10,7 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY main.py .
 COPY apu_catalog.py .
 COPY auth_middleware.py .
-COPY firebase_admin.py .
+COPY firebase_service.py .
 COPY schemas.py .
 
 # Exponer puerto

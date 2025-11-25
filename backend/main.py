@@ -14,11 +14,11 @@ from vertexai.generative_models import GenerativeModel, Part
 from vertexai.preview.vision_models import ImageGenerationModel
 try:
     from backend.auth_middleware import FirebaseAuthMiddleware
-    import backend.firebase_admin as firebase_admin
+    import backend.firebase_service as firebase_service
     from backend.schemas import Project, ProjectMetadata
 except ImportError:
     from auth_middleware import FirebaseAuthMiddleware
-    import firebase_admin
+    import firebase_service
     from schemas import Project, ProjectMetadata
 
 # Importar catálogo APU Profesional
@@ -51,7 +51,7 @@ except Exception as e:
 # Inicializar Firebase
 try:
     # The firebase_admin is initialized in the firebase_admin module
-    firebase_admin.get_db()
+    firebase_service.get_db()
     print("✅ Firebase Firestore          : Conectado")
 except Exception as e:
     print(f"⚠️  Firebase                    : Advertencia - {str(e)[:50]}")
@@ -417,7 +417,7 @@ async def create_project(project_metadata: ProjectMetadata, request: Request):
     }
     
     # Add to firestore
-    db = firebase_admin.get_db()
+    db = firebase_service.get_db()
     _, project_ref = db.collection("projects").add(project.dict(exclude_none=True))
     
     return project
@@ -428,7 +428,7 @@ async def get_projects(request: Request):
     Gets all projects for the current user.
     """
     user_id = request.state.user["uid"]
-    db = firebase_admin.get_db()
+    db = firebase_service.get_db()
     
     projects_ref = db.collection("projects").where(f"collaborators.{user_id}.role", "in", ["owner", "editor", "viewer"]).stream()
     
@@ -446,7 +446,7 @@ async def get_project(project_id: str, request: Request):
     Gets a single project by its ID.
     """
     user_id = request.state.user["uid"]
-    db = firebase_admin.get_db()
+    db = firebase_service.get_db()
     
     project_ref = db.collection("projects").document(project_id)
     project = project_ref.get()
@@ -468,7 +468,7 @@ async def update_project(project_id: str, project_update: Project, request: Requ
     Updates a project.
     """
     user_id = request.state.user["uid"]
-    db = firebase_admin.get_db()
+    db = firebase_service.get_db()
 
     project_ref = db.collection("projects").document(project_id)
     project = project_ref.get()
@@ -496,7 +496,7 @@ async def delete_project(project_id: str, request: Request):
     Deletes a project.
     """
     user_id = request.state.user["uid"]
-    db = firebase_admin.get_db()
+    db = firebase_service.get_db()
 
     project_ref = db.collection("projects").document(project_id)
     project = project_ref.get()

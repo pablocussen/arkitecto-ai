@@ -32,7 +32,9 @@
       "Bash(git commit:*)",
       "Bash(git config:*)",
       "Bash(git branch:*)",
-      "Bash(LISTO_PARA_DEPLOY.md)"
+      "Bash(LISTO_PARA_DEPLOY.md)",
+      "Bash(gh:*)",
+      "Bash(git push)"
     ],
     "deny": [],
     "ask": []
