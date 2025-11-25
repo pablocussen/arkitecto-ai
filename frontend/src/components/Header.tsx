@@ -1,4 +1,13 @@
+import { useAuth } from '../contexts/AuthContext';
+import { auth } from '../services/firebase';
+
 const Header = () => {
+  const { user } = useAuth();
+
+  const handleLogout = () => {
+    auth.signOut();
+  };
+
   return (
     <header className="glass-strong border-b border-white/10">
       <div className="container mx-auto px-4 py-6 max-w-6xl">
@@ -36,17 +45,29 @@ const Header = () => {
           </div>
 
           <div className="flex items-center space-x-3">
-            <div className="px-4 py-2 glass rounded-lg">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-sm text-gray-300">Online</span>
+            {user ? (
+              <>
+                <span className="text-sm text-gray-300">{user.email}</span>
+                <button
+                  onClick={handleLogout}
+                  className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <div className="px-4 py-2 glass rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  <span className="text-sm text-gray-300">Online</span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
     </header>
-  )
-}
+  );
+};
 
-export default Header
+export default Header;

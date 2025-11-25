@@ -1,0 +1,12 @@
+// Copy this file to firebaseConfig.ts and fill in your Firebase project's configuration.
+// See firebase/README.md for instructions on how to get this configuration.
+
+export const firebaseConfig = {
+  apiKey: "API_KEY",
+  authDomain: "PROJECT_ID.firebaseapp.com",
+  projectId: "PROJECT_ID",
+  storageBucket: "PROJECT_ID.appspot.com",
+  messagingSenderId: "SENDER_ID",
+  appId: "APP_ID",
+  measurementId: "G-MEASUREMENT_ID"
+};

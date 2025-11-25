@@ -4,15 +4,17 @@ import base64
 import io
 import time
 import re
-from typing import Optional
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from typing import Optional, List
+from datetime import datetime
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-import firebase_admin
-from firebase_admin import credentials, firestore
 import vertexai
 from vertexai.generative_models import GenerativeModel, Part
 from vertexai.preview.vision_models import ImageGenerationModel
+from backend.auth_middleware import FirebaseAuthMiddleware
+import backend.firebase_admin as firebase_admin
+from backend.schemas import Project, ProjectMetadata
 
 # Importar catálogo APU Profesional
 from apu_catalog import APU_CATALOG, KEYWORD_MAPPING, buscar_apus
@@ -43,9 +45,8 @@ except Exception as e:
 
 # Inicializar Firebase
 try:
-    if not firebase_admin._apps:
-        cred = credentials.ApplicationDefault()
-        firebase_admin.initialize_app(cred, {'projectId': PROJECT_ID})
+    # The firebase_admin is initialized in the firebase_admin module
+    firebase_admin.get_db()
     print("✅ Firebase Firestore          : Conectado")
 except Exception as e:
     print(f"⚠️  Firebase                    : Advertencia - {str(e)[:50]}")
@@ -66,6 +67,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(FirebaseAuthMiddleware)
+
 
 def generate_budget_offline(instruction: str) -> dict:
     """
@@ -285,9 +288,11 @@ async def generate_sketch(image: UploadFile = File(...), prompt: str = Form(...)
             vision_model = GenerativeModel("gemini-1.5-flash")
             image_part = Part.from_data(data=img_content, mime_type=image.content_type)
 
-            analysis_prompt = """Describe esta imagen de construcción en inglés técnico.
+            analysis_prompt = """
+            Describe esta imagen de construcción en inglés técnico.
             Enfócate en: tipo de estructura, materiales visibles, estado de construcción,
-            elementos arquitectónicos. Máximo 100 palabras. Sin mencionar personas."""
+            elementos arquitectónicos. Máximo 100 palabras. Sin mencionar personas.
+            """
 
             analysis = vision_model.generate_content([image_part, analysis_prompt])
             context_from_image = analysis.text.strip()
@@ -381,6 +386,126 @@ async def generate_sketch(image: UploadFile = File(...), prompt: str = Form(...)
                 "detail": error_msg[:200]  # Máximo 200 caracteres del error técnico
             }
         )
+
+@app.get("/api/v1/me")
+async def get_current_user(request: Request):
+    """
+    Returns the decoded token of the current user.
+    This is a protected endpoint and requires authentication.
+    """
+    return {"user": request.state.user}
+
+@app.post("/api/v1/projects", response_model=Project)
+async def create_project(project_metadata: ProjectMetadata, request: Request):
+    """
+    Creates a new project for the current user.
+    """
+    user_id = request.state.user["uid"]
+    
+    # Create a new project document
+    project = Project(metadata=project_metadata)
+    project.collaborators = {
+        user_id: {
+            "role": "owner",
+            "invited_at": datetime.utcnow()
+        }
+    }
+    
+    # Add to firestore
+    db = firebase_admin.get_db()
+    _, project_ref = db.collection("projects").add(project.dict(exclude_none=True))
+    
+    return project
+
+@app.get("/api/v1/projects", response_model=List[Project])
+async def get_projects(request: Request):
+    """
+    Gets all projects for the current user.
+    """
+    user_id = request.state.user["uid"]
+    db = firebase_admin.get_db()
+    
+    projects_ref = db.collection("projects").where(f"collaborators.{user_id}.role", "in", ["owner", "editor", "viewer"]).stream()
+    
+    projects = []
+    for project in projects_ref:
+        p = Project.parse_obj(project.to_dict())
+        p.id = project.id
+        projects.append(p)
+        
+    return projects
+
+@app.get("/api/v1/projects/{project_id}", response_model=Project)
+async def get_project(project_id: str, request: Request):
+    """
+    Gets a single project by its ID.
+    """
+    user_id = request.state.user["uid"]
+    db = firebase_admin.get_db()
+    
+    project_ref = db.collection("projects").document(project_id)
+    project = project_ref.get()
+
+    if not project.exists:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    project_data = project.to_dict()
+    if user_id not in project_data.get("collaborators", {}):
+        raise HTTPException(status_code=403, detail="Not authorized to access this project")
+
+    p = Project.parse_obj(project_data)
+    p.id = project.id
+    return p
+
+@app.put("/api/v1/projects/{project_id}", response_model=Project)
+async def update_project(project_id: str, project_update: Project, request: Request):
+    """
+    Updates a project.
+    """
+    user_id = request.state.user["uid"]
+    db = firebase_admin.get_db()
+
+    project_ref = db.collection("projects").document(project_id)
+    project = project_ref.get()
+
+    if not project.exists:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    project_data = project.to_dict()
+    if user_id not in project_data.get("collaborators", {}) or project_data["collaborators"][user_id]["role"] not in ["owner", "editor"]:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this project")
+    
+    update_data = project_update.dict(exclude_unset=True)
+    update_data["metadata"]["updated_at"] = datetime.utcnow()
+
+    project_ref.update(update_data)
+
+    updated_project = project_ref.get()
+    p = Project.parse_obj(updated_project.to_dict())
+    p.id = updated_project.id
+    return p
+
+@app.delete("/api/v1/projects/{project_id}", status_code=204)
+async def delete_project(project_id: str, request: Request):
+    """
+    Deletes a project.
+    """
+    user_id = request.state.user["uid"]
+    db = firebase_admin.get_db()
+
+    project_ref = db.collection("projects").document(project_id)
+    project = project_ref.get()
+
+    if not project.exists:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    project_data = project.to_dict()
+    if user_id not in project_data.get("collaborators", {}) or project_data["collaborators"][user_id]["role"] != "owner":
+        raise HTTPException(status_code=403, detail="Only the owner can delete a project")
+
+    project_ref.delete()
+    return {}
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
