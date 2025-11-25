@@ -2,7 +2,7 @@ import axios from 'axios';
 import { AnalysisResponse, Project, ProjectMetadata } from '../types';
 import { auth } from './firebase';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const publicApi = axios.create({
   baseURL: API_BASE_URL,
