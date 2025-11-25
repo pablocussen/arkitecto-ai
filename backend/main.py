@@ -12,9 +12,14 @@ from fastapi.responses import JSONResponse
 import vertexai
 from vertexai.generative_models import GenerativeModel, Part
 from vertexai.preview.vision_models import ImageGenerationModel
-from backend.auth_middleware import FirebaseAuthMiddleware
-import backend.firebase_admin as firebase_admin
-from backend.schemas import Project, ProjectMetadata
+try:
+    from backend.auth_middleware import FirebaseAuthMiddleware
+    import backend.firebase_admin as firebase_admin
+    from backend.schemas import Project, ProjectMetadata
+except ImportError:
+    from auth_middleware import FirebaseAuthMiddleware
+    import firebase_admin
+    from schemas import Project, ProjectMetadata
 
 # Importar catálogo APU Profesional
 from apu_catalog import APU_CATALOG, KEYWORD_MAPPING, buscar_apus
