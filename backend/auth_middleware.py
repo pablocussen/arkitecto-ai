@@ -9,6 +9,10 @@ PUBLIC_PATHS = ["/docs", "/openapi.json", "/", "/analyze_budget", "/generate_ske
 
 class FirebaseAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Allow OPTIONS requests (CORS preflight)
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         # Check if the path is public
         if request.url.path in PUBLIC_PATHS:
             return await call_next(request)
