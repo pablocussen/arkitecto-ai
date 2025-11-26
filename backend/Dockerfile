@@ -13,6 +13,7 @@ COPY auth_middleware.py .
 COPY firebase_service.py .
 COPY schemas.py .
 COPY pdf_generator.py .
+COPY security.py .
 
 # Exponer puerto
 EXPOSE 8000

@@ -16,10 +16,18 @@ try:
     from backend.auth_middleware import FirebaseAuthMiddleware
     import backend.firebase_service as firebase_service
     from backend.schemas import Project, ProjectMetadata
+    from backend.security import (
+        RateLimitMiddleware, SecurityHeadersMiddleware,
+        RequestLoggingMiddleware, InputSanitizer
+    )
 except ImportError:
     from auth_middleware import FirebaseAuthMiddleware
     import firebase_service
     from schemas import Project, ProjectMetadata
+    from security import (
+        RateLimitMiddleware, SecurityHeadersMiddleware,
+        RequestLoggingMiddleware, InputSanitizer
+    )
 
 # Importar catalogo APU Profesional v2.0
 from apu_catalog import (
@@ -70,15 +78,39 @@ print("   • POST /analyze_budget → Presupuestos con IA")
 print("   • POST /generate_sketch → Renders arquitectónicos")
 print("="*60 + "\n")
 
-app = FastAPI()
+app = FastAPI(
+    title="Arkitecto AI API",
+    description="API profesional para presupuestos de construccion con IA",
+    version="5.0 PRO",
+    docs_url="/docs",
+    redoc_url=None
+)
+
+# CORS Configuration - More restrictive for production
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+if ALLOWED_ORIGINS == ["*"]:
+    # Default allowed origins for production
+    ALLOWED_ORIGINS = [
+        "https://arkitecto-ai.vercel.app",
+        "https://*.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173"
+    ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
+    expose_headers=["Content-Disposition", "X-Process-Time"]
 )
+
+# Security middlewares (order matters - last added = first executed)
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RateLimitMiddleware)
 app.add_middleware(FirebaseAuthMiddleware)
 
 
@@ -199,6 +231,12 @@ def search_apus(query: str, limit: int = 10):
 
 @app.post("/analyze_budget")
 async def analyze_budget(image: Optional[UploadFile] = File(None), instruction: str = Form(...)):
+    # Sanitize input
+    try:
+        instruction = InputSanitizer.sanitize_instruction(instruction)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     print(f"\n💰 [PRESUPUESTO] Calculando: '{instruction}'")
 
     # Lista de modelos a intentar (del más nuevo al más estable)
