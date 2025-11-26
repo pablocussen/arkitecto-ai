@@ -1,17 +1,43 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+
+interface Suggestion {
+  titulo: string
+  descripcion: string
+  query: string
+  area_tipica?: number
+  icono: string
+}
 
 interface MagicEyeButtonProps {
   onCapture: (file: File, instruction: string) => void
   disabled?: boolean
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
 const MagicEyeButton = ({ onCapture, disabled = false }: MagicEyeButtonProps) => {
   const [showModal, setShowModal] = useState(false)
   const [instruction, setInstruction] = useState('')
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/suggestions`)
+        const data = await response.json()
+        if (data.success) {
+          setSuggestions(data.suggestions.slice(0, 6))
+        }
+      } catch (error) {
+        console.error('Error fetching suggestions:', error)
+      }
+    }
+    fetchSuggestions()
+  }, [])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -151,6 +177,26 @@ const MagicEyeButton = ({ onCapture, disabled = false }: MagicEyeButtonProps) =>
                 </button>
               )}
 
+              {/* Quick Suggestions */}
+              {suggestions.length > 0 && !instruction && (
+                <div className="mb-4">
+                  <label className="block text-xs font-medium text-gray-500 mb-2">
+                    Presupuestos rapidos
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {suggestions.map((s) => (
+                      <button
+                        key={s.titulo}
+                        onClick={() => setInstruction(s.query + (s.area_tipica ? ` ${s.area_tipica}m2` : ''))}
+                        className="px-2 py-2 glass rounded-lg text-xs text-gray-300 hover:text-white hover:bg-white/10 transition-all border border-white/5 hover:border-neon-cyan/30 text-left"
+                      >
+                        <span className="block font-medium truncate">{s.titulo}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Instruction Input */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -161,7 +207,7 @@ const MagicEyeButton = ({ onCapture, disabled = false }: MagicEyeButtonProps) =>
                   onChange={(e) => setInstruction(e.target.value)}
                   placeholder="Ej: Necesito presupuestar la construcción de un muro de 10 metros..."
                   className="w-full px-4 py-3 glass rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-cyan/50 border border-white/10"
-                  rows={4}
+                  rows={3}
                 />
               </div>
 

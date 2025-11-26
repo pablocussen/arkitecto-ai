@@ -22,7 +22,10 @@ except ImportError:
     from schemas import Project, ProjectMetadata
 
 # Importar catalogo APU Profesional v2.0
-from apu_catalog import APU_CATALOG, KEYWORD_MAPPING, buscar_apus, calcular_presupuesto_completo
+from apu_catalog import (
+    APU_CATALOG, KEYWORD_MAPPING, buscar_apus, calcular_presupuesto_completo,
+    obtener_sugerencias, obtener_categorias
+)
 
 # Importar generador de PDF
 from pdf_generator import generate_budget_pdf, generate_simple_budget_text
@@ -146,8 +149,53 @@ def health_check():
         "status": "online",
         "version": "5.0 PRO",
         "apu_catalog": "v2.0 - 150+ partidas",
-        "features": ["budget_analysis", "render_generation", "projects_crud"]
+        "features": ["budget_analysis", "render_generation", "projects_crud", "smart_suggestions"]
     }
+
+
+# =====================================================
+# SMART SUGGESTIONS - Phase 3 Optimization
+# =====================================================
+
+@app.get("/suggestions")
+def get_suggestions():
+    """
+    Retorna sugerencias de proyectos comunes para facilitar
+    la creacion rapida de presupuestos.
+    """
+    return {
+        "success": True,
+        "suggestions": obtener_sugerencias(),
+        "total": len(obtener_sugerencias())
+    }
+
+
+@app.get("/categories")
+def get_categories():
+    """
+    Retorna todas las categorias disponibles en el catalogo APU.
+    """
+    return {
+        "success": True,
+        "categories": obtener_categorias(),
+        "total": len(obtener_categorias())
+    }
+
+
+@app.get("/search/{query}")
+def search_apus(query: str, limit: int = 10):
+    """
+    Busca APUs por texto libre.
+    Util para autocompletado y busqueda en tiempo real.
+    """
+    resultados = buscar_apus(query, max_resultados=limit)
+    return {
+        "success": True,
+        "query": query,
+        "results": resultados,
+        "total": len(resultados)
+    }
+
 
 @app.post("/analyze_budget")
 async def analyze_budget(image: Optional[UploadFile] = File(None), instruction: str = Form(...)):

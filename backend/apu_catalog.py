@@ -582,3 +582,91 @@ def calcular_presupuesto_completo(consulta: str, area: float = None, cantidad: i
         "iva_incluido": False,
         "total_con_iva": int(total * 1.19)
     }
+
+
+# Proyectos comunes para sugerencias rapidas
+PROYECTOS_COMUNES = [
+    {
+        "titulo": "Bano completo",
+        "descripcion": "Remodelacion bano con ceramica, artefactos, griferia y terminaciones",
+        "query": "bano ceramica ducha lavamanos griferia",
+        "area_tipica": 6,
+        "icono": "bath"
+    },
+    {
+        "titulo": "Cocina integral",
+        "descripcion": "Remodelacion cocina con muebles, cubierta, ceramica y conexiones",
+        "query": "cocina ceramica muebles lavaplatos griferia gas",
+        "area_tipica": 12,
+        "icono": "kitchen"
+    },
+    {
+        "titulo": "Ampliacion habitacion",
+        "descripcion": "Construccion habitacion nueva con terminaciones completas",
+        "query": "tabique cielo piso puerta ventana pintura electrico",
+        "area_tipica": 15,
+        "icono": "bed"
+    },
+    {
+        "titulo": "Quincho con parrilla",
+        "descripcion": "Espacio exterior con quincho, parrilla y terminaciones",
+        "query": "quincho parrilla radier cubierta",
+        "area_tipica": 20,
+        "icono": "grill"
+    },
+    {
+        "titulo": "Techumbre completa",
+        "descripcion": "Estructura, cubierta, canales y hojalateria",
+        "query": "techo cercha zinc canal bajada",
+        "area_tipica": 80,
+        "icono": "home"
+    },
+    {
+        "titulo": "Piscina prefabricada",
+        "descripcion": "Piscina con equipamiento, deck y terminaciones",
+        "query": "piscina deck pavimento",
+        "area_tipica": 25,
+        "icono": "pool"
+    },
+    {
+        "titulo": "Cierre perimetral",
+        "descripcion": "Muro perimetral con porton y terminaciones",
+        "query": "muro cerco porton",
+        "metros_lineales": 40,
+        "icono": "fence"
+    },
+    {
+        "titulo": "Radier estacionamiento",
+        "descripcion": "Radier de hormigon para vehiculos",
+        "query": "radier pavimento hormigon",
+        "area_tipica": 30,
+        "icono": "car"
+    },
+    {
+        "titulo": "Galpon bodega",
+        "descripcion": "Estructura metalica con cubierta para bodega",
+        "query": "galpon estructura metalica cubierta",
+        "area_tipica": 50,
+        "icono": "warehouse"
+    },
+    {
+        "titulo": "Instalacion electrica",
+        "descripcion": "Red electrica completa para vivienda",
+        "query": "tablero electrico enchufes iluminacion",
+        "puntos": 30,
+        "icono": "bolt"
+    }
+]
+
+
+def obtener_sugerencias() -> list:
+    """Retorna lista de proyectos comunes para sugerencias rapidas."""
+    return PROYECTOS_COMUNES
+
+
+def obtener_categorias() -> list:
+    """Retorna lista de todas las categorias disponibles."""
+    return [
+        {"key": key, "nombre": cat["nombre"], "items_count": len(cat["items"])}
+        for key, cat in APU_CATALOG.items()
+    ]
