@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import MagicEyeButton from './MagicEyeButton';
 import DreamMode from './DreamMode';
 import BudgetList from './BudgetList';
+import ProjectDetail from './ProjectDetail';
 import { DashboardSkeleton, BudgetListSkeleton } from './LoadingSkeleton';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -27,6 +28,7 @@ export default function Dashboard() {
     totalConIva?: number;
   }>({});
   const [retryCount, setRetryCount] = useState(0);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -255,6 +257,7 @@ export default function Dashboard() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
+                onClick={() => setSelectedProject(project)}
                 className="glass-strong p-6 rounded-2xl hover:border-neon-cyan/30 border border-transparent transition-all cursor-pointer hover:shadow-lg hover:shadow-neon-cyan/10 group"
               >
                 <div className="flex items-start justify-between mb-3">
@@ -328,6 +331,16 @@ export default function Dashboard() {
       {/* Dream Mode Modal */}
       <AnimatePresence>
         {showDreamMode && <DreamMode onClose={() => setShowDreamMode(false)} />}
+      </AnimatePresence>
+
+      {/* Project Detail Modal */}
+      <AnimatePresence>
+        {selectedProject && (
+          <ProjectDetail
+            project={selectedProject}
+            onClose={() => setSelectedProject(null)}
+          />
+        )}
       </AnimatePresence>
     </div>
   );
