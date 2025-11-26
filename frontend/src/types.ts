@@ -15,11 +15,20 @@ export interface AnalysisResponse {
     items: BudgetItem[];
     total_estimado: number;
     moneda: string;
+    subtotal_directo?: number;
+    mano_obra?: number;
+    gastos_generales?: number;
+    imprevistos?: number;
+    utilidad?: number;
+    total_con_iva?: number;
   };
   metadata: {
     elementos_detectados: number;
     items_con_precio: number;
     generator: string;
+    categoria?: string;
+    version?: string;
+    transparencia?: string;
   };
 }
 

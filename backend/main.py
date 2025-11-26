@@ -8,7 +8,7 @@ from typing import Optional, List
 from datetime import datetime
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 import vertexai
 from vertexai.generative_models import GenerativeModel, Part
 from vertexai.preview.vision_models import ImageGenerationModel
@@ -23,6 +23,9 @@ except ImportError:
 
 # Importar catalogo APU Profesional v2.0
 from apu_catalog import APU_CATALOG, KEYWORD_MAPPING, buscar_apus, calcular_presupuesto_completo
+
+# Importar generador de PDF
+from pdf_generator import generate_budget_pdf, generate_simple_budget_text
 
 # --- CONFIGURACIÓN ---
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", "arkitecto-ai-pro-v1")
@@ -453,6 +456,172 @@ async def delete_project(project_id: str, request: Request):
 
     project_ref.delete()
     return {}
+
+
+# =====================================================
+# EXPORTACION PDF - Phase 1 Optimization
+# =====================================================
+
+@app.post("/export/pdf")
+async def export_budget_pdf(request: Request):
+    """
+    Exporta un presupuesto en formato PDF profesional.
+    Recibe el presupuesto completo y genera un PDF descargable.
+    """
+    try:
+        body = await request.json()
+        presupuesto = body.get("presupuesto", {})
+        metadata = body.get("metadata", {})
+        client_info = body.get("client_info", {})
+
+        if not presupuesto or not presupuesto.get("items"):
+            raise HTTPException(status_code=400, detail="Presupuesto vacio o sin items")
+
+        print(f"📄 [PDF] Generando presupuesto con {len(presupuesto.get('items', []))} items")
+
+        # Generar PDF
+        pdf_buffer = generate_budget_pdf(presupuesto, metadata, client_info)
+
+        # Nombre del archivo
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"presupuesto_arkitecto_{timestamp}.pdf"
+
+        print(f"✅ [PDF] Generado: {filename}")
+
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Access-Control-Expose-Headers": "Content-Disposition"
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ [PDF] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generando PDF: {str(e)}")
+
+
+@app.post("/export/text")
+async def export_budget_text(request: Request):
+    """
+    Exporta un presupuesto en formato texto plano.
+    Util para compartir por WhatsApp, email, etc.
+    """
+    try:
+        body = await request.json()
+        presupuesto = body.get("presupuesto", {})
+        metadata = body.get("metadata", {})
+
+        if not presupuesto:
+            raise HTTPException(status_code=400, detail="Presupuesto vacio")
+
+        print(f"📝 [TEXT] Generando resumen de presupuesto")
+
+        text_content = generate_simple_budget_text(presupuesto, metadata)
+
+        return {
+            "success": True,
+            "text": text_content,
+            "format": "plain_text"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ [TEXT] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generando texto: {str(e)}")
+
+
+@app.post("/export/excel")
+async def export_budget_excel(request: Request):
+    """
+    Exporta un presupuesto en formato Excel.
+    """
+    try:
+        body = await request.json()
+        presupuesto = body.get("presupuesto", {})
+        metadata = body.get("metadata", {})
+
+        if not presupuesto or not presupuesto.get("items"):
+            raise HTTPException(status_code=400, detail="Presupuesto vacio o sin items")
+
+        print(f"📊 [EXCEL] Generando presupuesto con {len(presupuesto.get('items', []))} items")
+
+        import pandas as pd
+        from io import BytesIO
+
+        # Crear DataFrame con los items
+        items = presupuesto.get("items", [])
+        df_items = pd.DataFrame(items)
+
+        # Renombrar columnas a espanol
+        column_names = {
+            "elemento": "Elemento",
+            "descripcion": "Descripcion",
+            "cantidad": "Cantidad",
+            "unidad": "Unidad",
+            "precio_unitario": "Precio Unitario",
+            "subtotal": "Subtotal",
+            "apu_origen": "Codigo APU"
+        }
+        df_items = df_items.rename(columns=column_names)
+
+        # Crear resumen de costos
+        resumen_data = {
+            "Concepto": [
+                "Subtotal Directo (Materiales)",
+                "Mano de Obra (18%)",
+                "Gastos Generales (8%)",
+                "Imprevistos (5%)",
+                "Utilidad (10%)",
+                "TOTAL NETO",
+                "IVA (19%)",
+                "TOTAL CON IVA"
+            ],
+            "Monto (CLP)": [
+                presupuesto.get("subtotal_directo", 0),
+                presupuesto.get("mano_obra", 0),
+                presupuesto.get("gastos_generales", 0),
+                presupuesto.get("imprevistos", 0),
+                presupuesto.get("utilidad", 0),
+                presupuesto.get("total_estimado", 0),
+                int(presupuesto.get("total_estimado", 0) * 0.19),
+                presupuesto.get("total_con_iva", int(presupuesto.get("total_estimado", 0) * 1.19))
+            ]
+        }
+        df_resumen = pd.DataFrame(resumen_data)
+
+        # Crear Excel con multiples hojas
+        excel_buffer = BytesIO()
+        with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+            df_items.to_excel(writer, sheet_name='Detalle Partidas', index=False)
+            df_resumen.to_excel(writer, sheet_name='Resumen Costos', index=False)
+
+        excel_buffer.seek(0)
+
+        # Nombre del archivo
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"presupuesto_arkitecto_{timestamp}.xlsx"
+
+        print(f"✅ [EXCEL] Generado: {filename}")
+
+        return StreamingResponse(
+            excel_buffer,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Access-Control-Expose-Headers": "Content-Disposition"
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ [EXCEL] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generando Excel: {str(e)}")
 
 
 if __name__ == "__main__":

@@ -17,6 +17,14 @@ export default function Dashboard() {
   const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([]);
   const [budgetTotal, setBudgetTotal] = useState(0);
   const [budgetAnalysis, setBudgetAnalysis] = useState<string | null>(null);
+  const [budgetCosts, setBudgetCosts] = useState<{
+    subtotalDirecto?: number;
+    manoObra?: number;
+    gastosGenerales?: number;
+    imprevistos?: number;
+    utilidad?: number;
+    totalConIva?: number;
+  }>({});
   const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
@@ -64,6 +72,7 @@ export default function Dashboard() {
     setBudgetItems([]);
     setBudgetTotal(0);
     setBudgetAnalysis(null);
+    setBudgetCosts({});
 
     try {
       const result = await analyzeBudget(file, instruction);
@@ -72,6 +81,14 @@ export default function Dashboard() {
         setBudgetTotal(result.presupuesto.total_estimado ||
           result.presupuesto.items.reduce((sum, item) => sum + item.subtotal, 0));
         setBudgetAnalysis(result.analisis || null);
+        setBudgetCosts({
+          subtotalDirecto: result.presupuesto.subtotal_directo,
+          manoObra: result.presupuesto.mano_obra,
+          gastosGenerales: result.presupuesto.gastos_generales,
+          imprevistos: result.presupuesto.imprevistos,
+          utilidad: result.presupuesto.utilidad,
+          totalConIva: result.presupuesto.total_con_iva
+        });
       } else {
         setError('No se pudo generar el presupuesto. Intenta con otra descripcion.');
       }
@@ -87,6 +104,7 @@ export default function Dashboard() {
     setBudgetItems([]);
     setBudgetTotal(0);
     setBudgetAnalysis(null);
+    setBudgetCosts({});
   };
 
   const dismissError = () => setError(null);
@@ -221,7 +239,16 @@ export default function Dashboard() {
               </button>
             </div>
 
-            <BudgetList items={budgetItems} total={budgetTotal} />
+            <BudgetList
+              items={budgetItems}
+              total={budgetTotal}
+              subtotalDirecto={budgetCosts.subtotalDirecto}
+              manoObra={budgetCosts.manoObra}
+              gastosGenerales={budgetCosts.gastosGenerales}
+              imprevistos={budgetCosts.imprevistos}
+              utilidad={budgetCosts.utilidad}
+              totalConIva={budgetCosts.totalConIva}
+            />
           </motion.div>
         )}
       </AnimatePresence>

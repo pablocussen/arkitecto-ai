@@ -63,3 +63,54 @@ export const createProject = async (projectMetadata: Partial<ProjectMetadata>): 
   const response = await apiClient.post<Project>('/api/v1/projects', projectMetadata);
   return response.data;
 };
+
+// =====================================================
+// EXPORT FUNCTIONS - Phase 1 Optimization
+// =====================================================
+
+export interface ExportData {
+  presupuesto: {
+    items: Array<{
+      elemento: string;
+      descripcion: string;
+      cantidad: number;
+      unidad: string;
+      precio_unitario: number;
+      subtotal: number;
+      apu_origen?: string;
+    }>;
+    total_estimado: number;
+    subtotal_directo?: number;
+    mano_obra?: number;
+    gastos_generales?: number;
+    imprevistos?: number;
+    utilidad?: number;
+    total_con_iva?: number;
+  };
+  metadata?: {
+    categoria?: string;
+  };
+  client_info?: {
+    nombre?: string;
+    email?: string;
+  };
+}
+
+export const exportToPDF = async (data: ExportData): Promise<Blob> => {
+  const response = await publicApi.post('/export/pdf', data, {
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
+export const exportToExcel = async (data: ExportData): Promise<Blob> => {
+  const response = await publicApi.post('/export/excel', data, {
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
+export const exportToText = async (data: ExportData): Promise<{ success: boolean; text: string }> => {
+  const response = await publicApi.post('/export/text', data);
+  return response.data;
+};
