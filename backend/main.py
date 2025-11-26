@@ -21,8 +21,8 @@ except ImportError:
     import firebase_service
     from schemas import Project, ProjectMetadata
 
-# Importar catálogo APU Profesional
-from apu_catalog import APU_CATALOG, KEYWORD_MAPPING, buscar_apus
+# Importar catalogo APU Profesional v2.0
+from apu_catalog import APU_CATALOG, KEYWORD_MAPPING, buscar_apus, calcular_presupuesto_completo
 
 # --- CONFIGURACIÓN ---
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", "arkitecto-ai-pro-v1")
@@ -34,11 +34,12 @@ if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8')
 
 print("\n" + "="*60)
-print("🚀  ARKITECTO AI - Backend v5.0 PRO")
+print("  ARKITECTO AI - Backend v5.0 PRO")
 print("="*60)
-print(f"📍 Proyecto GCP: {PROJECT_ID}")
-print(f"🌎 Región: {LOCATION}")
-print(f"💎 APUs Profesionales: 40+ items con precios reales CLP")
+print(f"Proyecto GCP: {PROJECT_ID}")
+print(f"Region: {LOCATION}")
+print(f"APUs Profesionales: 150+ partidas con precios CLP 2024/2025")
+print(f"Categorias: 17 (preliminares a equipos)")
 print("-"*60)
 
 # Inicializar Vertex AI
@@ -77,131 +78,73 @@ app.add_middleware(FirebaseAuthMiddleware)
 
 def generate_budget_offline(instruction: str) -> dict:
     """
-    🚀 GENERADOR DE PRESUPUESTOS PRO
-    Usa catálogo APU profesional con precios reales de mercado chileno.
-    Sistema inteligente de búsqueda por keywords naturales.
-    Transparencia total: códigos APU, origen, precios unitarios verificados.
+    GENERADOR DE PRESUPUESTOS PRO v2.0
+    Usa catalogo APU profesional con +150 partidas y precios reales CLP.
+    Sistema inteligente de busqueda por keywords naturales.
+    Incluye desglose completo: materiales, mano obra, GG, imprevistos, utilidad.
     """
     instruction_lower = instruction.lower()
 
-    # 1. Buscar APUs relevantes usando el sistema inteligente
-    apus_encontrados = buscar_apus(instruction)
-
-    if not apus_encontrados:
-        # Fallback: usar APUs de terminaciones como default
-        apus_encontrados = APU_CATALOG["terminaciones"]["items"][:3]
-
-    # 2. Detectar cantidad/área si está especificada
+    # Detectar area si esta especificada
     area_match = re.search(r'(\d+)\s*m[²2]', instruction_lower)
     cantidad_match = re.search(r'(\d+)\s*(unidad|un|und|u\b|puerta|ventana)', instruction_lower)
 
-    # Cantidad por defecto según unidad
-    cantidad_default = 1
-    if area_match:
-        cantidad_default = int(area_match.group(1))
-    elif cantidad_match:
-        cantidad_default = int(cantidad_match.group(1))
+    area = float(area_match.group(1)) if area_match else None
+    cantidad = int(cantidad_match.group(1)) if cantidad_match else None
 
-    # 3. Construir items del presupuesto con APUs reales
-    items = []
-    subtotal_materiales = 0
+    # Usar el nuevo sistema de presupuesto completo
+    presupuesto = calcular_presupuesto_completo(instruction, area=area, cantidad=cantidad)
 
-    # Detectar si es solicitud de puerta/ventana única
-    es_item_unico = any(word in instruction_lower for word in ["una puerta", "una ventana", "instalar puerta", "instalar ventana"])
-
-    for idx, apu in enumerate(apus_encontrados[:5]):  # Máximo 5 APUs principales
-        # Detectar cantidad según tipo de unidad
-        if apu["unidad"] in ["m²", "m2"]:
-            cantidad = cantidad_default if area_match else 30  # Default 30m²
-        elif apu["unidad"] in ["m³", "m3"]:
-            cantidad = max(1, cantidad_default // 10)  # Aproximación
-        elif apu["unidad"] in ["ml", "m"]:
-            cantidad = cantidad_default if cantidad_match else 10  # Default 10m
-        elif apu["unidad"] == "kg":
-            cantidad = cantidad_default * 5 if area_match else 50  # Aproximación
-        elif apu["unidad"] == "un":
-            # Si pide una sola puerta/ventana, solo usar el primer APU que coincida
-            if es_item_unico and idx > 0:
-                continue
-            cantidad = cantidad_default if cantidad_match else 1
-        else:
-            cantidad = 1
-
-        precio_unitario = apu["precio"]
-        subtotal = precio_unitario * cantidad
-        subtotal_materiales += subtotal
-
-        items.append({
-            "elemento": apu["desc"].split(" - ")[0] if " - " in apu["desc"] else apu["desc"][:40],
-            "descripcion": f"🏗️ {apu['desc']} | Código: {apu['codigo']}",
-            "cantidad": cantidad,
-            "unidad": apu["unidad"],
-            "precio_unitario": precio_unitario,
-            "subtotal": subtotal,
-            "apu_origen": f"APU Profesional {apu['codigo']}"
-        })
-
-    # 4. Agregar mano de obra (15% del subtotal materiales)
-    mano_obra = subtotal_materiales * 0.15
-    items.append({
-        "elemento": "Mano de obra especializada",
-        "descripcion": "🛠️ Maestros y jornales | Código: MO-01",
-        "cantidad": 1,
-        "unidad": "gl",
-        "precio_unitario": mano_obra,
-        "subtotal": mano_obra,
-        "apu_origen": "APU Profesional MO-01"
-    })
-
-    # 5. Agregar imprevistos (5% del subtotal materiales)
-    imprevistos = subtotal_materiales * 0.05
-    items.append({
-        "elemento": "Imprevistos y contingencias",
-        "descripcion": "⚠️ Reserva para imprevistos (5%)",
-        "cantidad": 1,
-        "unidad": "gl",
-        "precio_unitario": imprevistos,
-        "subtotal": imprevistos,
-        "apu_origen": "Estimado"
-    })
-
-    total = subtotal_materiales + mano_obra + imprevistos
-
-    # 6. Generar análisis inteligente
-    categoria_detectada = "construcción"
+    # Detectar categoria para el analisis
+    categoria_detectada = "Construccion General"
     for keyword, cat in KEYWORD_MAPPING.items():
         if keyword in instruction_lower:
-            categoria_detectada = APU_CATALOG[cat]["nombre"]
+            if cat in APU_CATALOG:
+                categoria_detectada = APU_CATALOG[cat]["nombre"]
             break
 
+    # Contar partidas principales (sin costos indirectos)
+    partidas_principales = len([i for i in presupuesto["items"] if "%" not in i.get("apu_origen", "")])
+
     analisis = (
-        f"✅ Presupuesto profesional generado para: {instruction}\n"
-        f"📊 Categoría detectada: {categoria_detectada}\n"
-        f"🎯 {len(items)-2} partidas principales encontradas\n"
-        f"💰 Precios de mercado chileno actualizados (CLP 2024)"
+        f"Presupuesto profesional generado para: {instruction}\n"
+        f"Categoria detectada: {categoria_detectada}\n"
+        f"{partidas_principales} partidas principales + costos indirectos\n"
+        f"Precios mercado chileno CLP 2024/2025 - IVA no incluido"
     )
 
-    # 7. Retornar formato estructurado PRO
     return {
         "success": True,
         "analisis": analisis,
         "presupuesto": {
-            "items": items,
-            "total_estimado": int(total),
-            "moneda": "CLP"
+            "items": presupuesto["items"],
+            "total_estimado": presupuesto["total_estimado"],
+            "moneda": "CLP",
+            "subtotal_directo": presupuesto["subtotal_directo"],
+            "mano_obra": presupuesto["mano_obra"],
+            "gastos_generales": presupuesto["gastos_generales"],
+            "imprevistos": presupuesto["imprevistos"],
+            "utilidad": presupuesto["utilidad"],
+            "total_con_iva": presupuesto["total_con_iva"]
         },
         "metadata": {
-            "elementos_detectados": len(items),
-            "items_con_precio": len(items),
-            "generator": "apu_profesional",
+            "elementos_detectados": len(presupuesto["items"]),
+            "items_con_precio": len(presupuesto["items"]),
+            "generator": "apu_profesional_v2",
             "categoria": categoria_detectada,
-            "transparencia": "Todos los precios incluyen códigos APU verificados"
+            "version": "2.0",
+            "transparencia": "Codigos APU compatibles ONDAC/CDT"
         }
     }
 
 @app.get("/")
 def health_check():
-    return {"status": "online", "brain": "v4.0 Cascade"}
+    return {
+        "status": "online",
+        "version": "5.0 PRO",
+        "apu_catalog": "v2.0 - 150+ partidas",
+        "features": ["budget_analysis", "render_generation", "projects_crud"]
+    }
 
 @app.post("/analyze_budget")
 async def analyze_budget(image: Optional[UploadFile] = File(None), instruction: str = Form(...)):
