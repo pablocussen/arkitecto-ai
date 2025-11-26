@@ -86,24 +86,14 @@ app = FastAPI(
     redoc_url=None
 )
 
-# CORS Configuration - More restrictive for production
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
-if ALLOWED_ORIGINS == ["*"]:
-    # Default allowed origins for production
-    ALLOWED_ORIGINS = [
-        "https://arkitecto-ai.vercel.app",
-        "https://*.vercel.app",
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173"
-    ]
-
+# CORS Configuration - Allow all origins for now (Vercel preview URLs change)
+# In production, you can set ALLOWED_ORIGINS env var with specific domains
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
+    allow_origins=["*"],
+    allow_credentials=False,  # Must be False when using wildcard origins
+    allow_methods=["*"],
+    allow_headers=["*"],
     expose_headers=["Content-Disposition", "X-Process-Time"]
 )
 
