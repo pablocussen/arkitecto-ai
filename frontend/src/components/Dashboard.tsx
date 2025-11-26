@@ -34,20 +34,28 @@ export default function Dashboard() {
     const fetchProjects = async () => {
       if (!user) return;
       setLoading(true);
-      setError(null);
+      // Don't clear error immediately - let user dismiss it
 
       try {
         const userProjects = await getProjects();
         setProjects(userProjects);
+        setError(null); // Clear error only on success
       } catch (err: any) {
         const errorMessage = err.response?.data?.detail || err.message || 'Error de conexion';
-        if (errorMessage.includes('Network') && retryCount < 2) {
-          // Auto-retry on network errors (backend cold start)
+        const isNetworkError = errorMessage.includes('Network') || errorMessage.includes('ERR_');
+
+        if (isNetworkError && retryCount < 3) {
+          // Auto-retry on network errors (backend cold start) - silently
           setRetryCount(prev => prev + 1);
           setTimeout(() => fetchProjects(), 2000);
           return;
         }
-        setError(errorMessage);
+
+        // Only show error if it's not a network error during retries
+        // Network errors during initial load are common due to cold starts
+        if (!isNetworkError || retryCount >= 3) {
+          setError(errorMessage);
+        }
       } finally {
         setLoading(false);
       }
