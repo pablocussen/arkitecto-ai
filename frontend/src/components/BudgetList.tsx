@@ -216,24 +216,96 @@ const BudgetList = ({
         ))}
       </div>
 
-      {/* Summary Card */}
+      {/* Professional Cost Breakdown */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: items.length * 0.1 + 0.2 }}
         className="glass-strong rounded-2xl p-6 border-2 border-neon-cyan/30 mt-8"
       >
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-gray-400 mb-1">Total de partidas</p>
-            <p className="text-3xl font-bold text-white">{items.length}</p>
+        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <svg className="w-5 h-5 text-neon-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+          Resumen de Costos
+        </h3>
+
+        <div className="space-y-3">
+          {/* Items count */}
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-400">Partidas analizadas</span>
+            <span className="text-white font-medium">{items.length} items</span>
           </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-400 mb-1">Monto total estimado</p>
-            <p className="text-3xl font-bold bg-gradient-to-r from-neon-cyan to-neon-banana bg-clip-text text-transparent">
-              {formatCurrency(total)}
-            </p>
+
+          {/* Subtotal Directo */}
+          {subtotalDirecto !== undefined && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">Subtotal Directo (Materiales)</span>
+              <span className="text-white font-medium">{formatCurrency(subtotalDirecto)}</span>
+            </div>
+          )}
+
+          {/* Mano de Obra */}
+          {manoObra !== undefined && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">Mano de Obra (18%)</span>
+              <span className="text-white font-medium">{formatCurrency(manoObra)}</span>
+            </div>
+          )}
+
+          {/* Gastos Generales */}
+          {gastosGenerales !== undefined && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">Gastos Generales (8%)</span>
+              <span className="text-white font-medium">{formatCurrency(gastosGenerales)}</span>
+            </div>
+          )}
+
+          {/* Imprevistos */}
+          {imprevistos !== undefined && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">Imprevistos (5%)</span>
+              <span className="text-white font-medium">{formatCurrency(imprevistos)}</span>
+            </div>
+          )}
+
+          {/* Utilidad */}
+          {utilidad !== undefined && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">Utilidad (10%)</span>
+              <span className="text-white font-medium">{formatCurrency(utilidad)}</span>
+            </div>
+          )}
+
+          {/* Divider */}
+          <div className="border-t border-white/10 my-3" />
+
+          {/* Total Neto */}
+          <div className="flex justify-between">
+            <span className="text-gray-300 font-medium">Total Neto</span>
+            <span className="text-white font-bold text-lg">{formatCurrency(total)}</span>
           </div>
+
+          {/* IVA */}
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-400">IVA (19%)</span>
+            <span className="text-white font-medium">{formatCurrency(Math.round(total * 0.19))}</span>
+          </div>
+
+          {/* Total con IVA - Destacado */}
+          <div className="bg-gradient-to-r from-neon-cyan/20 to-neon-banana/20 rounded-xl p-4 mt-2">
+            <div className="flex justify-between items-center">
+              <span className="text-white font-bold">TOTAL CON IVA</span>
+              <span className="text-3xl font-bold bg-gradient-to-r from-neon-cyan to-neon-banana bg-clip-text text-transparent">
+                {formatCurrency(totalConIva || Math.round(total * 1.19))}
+              </span>
+            </div>
+          </div>
+
+          {/* Disclaimer */}
+          <p className="text-xs text-gray-500 mt-4 text-center">
+            Precios estimados basados en catalogo APU profesional (ONDAC/CDT compatible) - CLP 2024/2025
+          </p>
         </div>
       </motion.div>
     </div>

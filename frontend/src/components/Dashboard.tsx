@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import MagicEyeButton from './MagicEyeButton';
 import DreamMode from './DreamMode';
 import BudgetList from './BudgetList';
+import { DashboardSkeleton, BudgetListSkeleton } from './LoadingSkeleton';
 import { AnimatePresence, motion } from 'framer-motion';
 
 export default function Dashboard() {
@@ -109,19 +110,9 @@ export default function Dashboard() {
 
   const dismissError = () => setError(null);
 
-  // Loading state with animation
+  // Loading state with skeleton
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-16 h-16 border-4 border-neon-cyan/20 border-t-neon-cyan rounded-full mb-6"
-        />
-        <p className="text-neon-cyan font-semibold text-lg">Cargando proyectos...</p>
-        <p className="text-gray-500 text-sm mt-2">Conectando con el servidor</p>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (
@@ -184,28 +175,22 @@ export default function Dashboard() {
       <AnimatePresence>
         {analyzingBudget && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="mb-8 glass-strong p-8 rounded-2xl text-center border border-neon-cyan/20"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="mb-8"
           >
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              className="w-16 h-16 border-4 border-neon-cyan/20 border-t-neon-cyan rounded-full mx-auto mb-4"
-            />
-            <p className="text-neon-cyan font-semibold text-lg">Analizando presupuesto...</p>
-            <p className="text-gray-400 text-sm mt-2">Buscando partidas APU relevantes</p>
-            <div className="mt-4 flex justify-center space-x-1">
-              {[0, 1, 2].map((i) => (
+            <div className="mb-4 glass p-4 rounded-xl border border-neon-cyan/20">
+              <div className="flex items-center space-x-3">
                 <motion.div
-                  key={i}
-                  animate={{ opacity: [0.3, 1, 0.3] }}
-                  transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.2 }}
-                  className="w-2 h-2 bg-neon-cyan rounded-full"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                  className="w-5 h-5 border-2 border-neon-cyan/30 border-t-neon-cyan rounded-full"
                 />
-              ))}
+                <p className="text-neon-cyan font-medium">Analizando presupuesto con catalogo APU profesional...</p>
+              </div>
             </div>
+            <BudgetListSkeleton count={4} />
           </motion.div>
         )}
       </AnimatePresence>
