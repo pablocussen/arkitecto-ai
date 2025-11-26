@@ -72,7 +72,7 @@ const MagicEyeButton = ({ onCapture, disabled = false }: MagicEyeButtonProps) =>
       <motion.button
         onClick={openCamera}
         disabled={disabled}
-        className="fixed bottom-8 right-8 w-20 h-20 rounded-full bg-gradient-to-br from-neon-cyan to-neon-banana shadow-2xl flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+        className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-neon-cyan to-neon-banana shadow-2xl flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed z-40"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
         animate={{
@@ -87,7 +87,7 @@ const MagicEyeButton = ({ onCapture, disabled = false }: MagicEyeButtonProps) =>
         }}
       >
         <svg
-          className="w-10 h-10 text-dark-950"
+          className="w-8 h-8 sm:w-10 sm:h-10 text-dark-950"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -131,19 +131,19 @@ const MagicEyeButton = ({ onCapture, disabled = false }: MagicEyeButtonProps) =>
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="glass-strong rounded-3xl p-8 max-w-lg w-full border-2 border-neon-cyan/30"
+              className="glass-strong rounded-2xl sm:rounded-3xl p-4 sm:p-8 max-w-lg w-full border-2 border-neon-cyan/30 max-h-[90vh] overflow-y-auto"
             >
-              <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-neon-cyan to-neon-banana bg-clip-text text-transparent">
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-neon-cyan to-neon-banana bg-clip-text text-transparent">
                 Analizar Proyecto
               </h2>
 
               {/* Image Preview */}
               {imagePreview && (
-                <div className="mb-6 rounded-xl overflow-hidden border-2 border-neon-cyan/20">
+                <div className="mb-4 sm:mb-6 rounded-xl overflow-hidden border-2 border-neon-cyan/20">
                   <img
                     src={imagePreview}
                     alt="Preview"
-                    className="w-full h-48 object-cover"
+                    className="w-full h-32 sm:h-48 object-cover"
                   />
                 </div>
               )}
@@ -152,10 +152,10 @@ const MagicEyeButton = ({ onCapture, disabled = false }: MagicEyeButtonProps) =>
               {!imagePreview && (
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full mb-6 py-12 border-2 border-dashed border-neon-cyan/30 rounded-xl hover:border-neon-cyan/60 transition-colors flex flex-col items-center justify-center space-y-3"
+                  className="w-full mb-4 sm:mb-6 py-8 sm:py-12 border-2 border-dashed border-neon-cyan/30 rounded-xl hover:border-neon-cyan/60 transition-colors flex flex-col items-center justify-center space-y-2 sm:space-y-3"
                 >
                   <svg
-                    className="w-12 h-12 text-neon-cyan/50"
+                    className="w-10 h-10 sm:w-12 sm:h-12 text-neon-cyan/50"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -173,17 +173,17 @@ const MagicEyeButton = ({ onCapture, disabled = false }: MagicEyeButtonProps) =>
                       d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
                     />
                   </svg>
-                  <span className="text-gray-400">Capturar o seleccionar imagen</span>
+                  <span className="text-sm text-gray-400">Capturar o seleccionar imagen</span>
                 </button>
               )}
 
               {/* Quick Suggestions */}
               {suggestions.length > 0 && !instruction && (
-                <div className="mb-4">
+                <div className="mb-3 sm:mb-4">
                   <label className="block text-xs font-medium text-gray-500 mb-2">
                     Presupuestos rapidos
                   </label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {suggestions.map((s) => (
                       <button
                         key={s.titulo}
@@ -198,31 +198,31 @@ const MagicEyeButton = ({ onCapture, disabled = false }: MagicEyeButtonProps) =>
               )}
 
               {/* Instruction Input */}
-              <div className="mb-6">
+              <div className="mb-4 sm:mb-6">
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  ¿Qué necesitas presupuestar?
+                  ¿Que necesitas presupuestar?
                 </label>
                 <textarea
                   value={instruction}
                   onChange={(e) => setInstruction(e.target.value)}
-                  placeholder="Ej: Necesito presupuestar la construcción de un muro de 10 metros..."
-                  className="w-full px-4 py-3 glass rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-cyan/50 border border-white/10"
-                  rows={3}
+                  placeholder="Ej: Muro de 10 metros, bano completo..."
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 glass rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-cyan/50 border border-white/10 text-sm sm:text-base"
+                  rows={2}
                 />
               </div>
 
               {/* Buttons */}
-              <div className="flex space-x-3">
+              <div className="flex space-x-2 sm:space-x-3">
                 <button
                   onClick={() => setShowModal(false)}
-                  className="flex-1 px-6 py-3 glass rounded-xl hover:bg-white/10 transition-colors text-gray-300"
+                  className="flex-1 px-4 sm:px-6 py-2.5 sm:py-3 glass rounded-xl hover:bg-white/10 transition-colors text-gray-300 text-sm sm:text-base"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleSubmit}
                   disabled={!selectedImage || !instruction.trim()}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-neon-cyan to-neon-banana rounded-xl font-semibold text-dark-950 hover:shadow-lg hover:shadow-neon-cyan/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-neon-cyan to-neon-banana rounded-xl font-semibold text-dark-950 hover:shadow-lg hover:shadow-neon-cyan/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
                 >
                   Analizar
                 </button>
