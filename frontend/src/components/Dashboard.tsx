@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Project, BudgetItem } from '../types.ts';
 import { getProjects, createProject, analyzeBudget } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -27,42 +27,45 @@ export default function Dashboard() {
     utilidad?: number;
     totalConIva?: number;
   }>({});
-  const [retryCount, setRetryCount] = useState(0);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const retryCountRef = useRef(0);
+  const hasFetchedRef = useRef(false);
 
   useEffect(() => {
+    if (!user || hasFetchedRef.current) return;
+
     const fetchProjects = async () => {
-      if (!user) return;
       setLoading(true);
-      // Don't clear error immediately - let user dismiss it
 
       try {
         const userProjects = await getProjects();
         setProjects(userProjects);
-        setError(null); // Clear error only on success
+        setError(null);
+        hasFetchedRef.current = true;
       } catch (err: any) {
         const errorMessage = err.response?.data?.detail || err.message || 'Error de conexion';
         const isNetworkError = errorMessage.includes('Network') || errorMessage.includes('ERR_');
 
-        if (isNetworkError && retryCount < 3) {
-          // Auto-retry on network errors (backend cold start) - silently
-          setRetryCount(prev => prev + 1);
-          setTimeout(() => fetchProjects(), 2000);
+        if (isNetworkError && retryCountRef.current < 3) {
+          // Auto-retry silently
+          retryCountRef.current += 1;
+          setTimeout(fetchProjects, 2000);
           return;
         }
 
-        // Only show error if it's not a network error during retries
-        // Network errors during initial load are common due to cold starts
-        if (!isNetworkError || retryCount >= 3) {
+        // Only show non-network errors, or network errors after all retries
+        if (!isNetworkError) {
           setError(errorMessage);
         }
+        // For network errors, just stop loading - user can still use the app
+        hasFetchedRef.current = true;
       } finally {
         setLoading(false);
       }
     };
 
     fetchProjects();
-  }, [user, retryCount]);
+  }, [user]);
 
   const handleCreateProject = async () => {
     const title = prompt("Nombre del proyecto:");
