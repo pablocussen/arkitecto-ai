@@ -5,7 +5,15 @@ from starlette.responses import Response, JSONResponse
 from firebase_admin import auth
 
 # List of paths that do not require authentication
-PUBLIC_PATHS = ["/docs", "/openapi.json", "/", "/analyze_budget", "/generate_sketch"]
+PUBLIC_PATHS = [
+    "/docs", "/openapi.json", "/",
+    "/analyze_budget", "/generate_sketch",
+    "/suggestions", "/categories",
+    "/export/pdf", "/export/excel", "/export/text"
+]
+
+# Paths that start with these prefixes are public
+PUBLIC_PATH_PREFIXES = ["/search/"]
 
 class FirebaseAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
@@ -16,6 +24,11 @@ class FirebaseAuthMiddleware(BaseHTTPMiddleware):
         # Check if the path is public
         if request.url.path in PUBLIC_PATHS:
             return await call_next(request)
+
+        # Check if the path starts with a public prefix
+        for prefix in PUBLIC_PATH_PREFIXES:
+            if request.url.path.startswith(prefix):
+                return await call_next(request)
 
         auth_header = request.headers.get("Authorization")
         if not auth_header:
