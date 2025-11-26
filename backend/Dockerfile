@@ -16,5 +16,8 @@ COPY schemas.py .
 # Exponer puerto
 EXPOSE 8000
 
+# Cloud Run usa variable PORT
+ENV PORT=8080
+
 # Comando de inicio
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD exec uvicorn main:app --host 0.0.0.0 --port $PORT
