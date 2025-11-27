@@ -1,13 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
-import { Project, BudgetItem } from '../types.ts';
-import { getProjects, createProject, analyzeBudget } from '../services/api';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { Project, BudgetItem, ProjectMetadata } from '../types.ts';
+import { getProjects, createProject, analyzeBudget, updateProject, deleteProject } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import MagicEyeButton from './MagicEyeButton';
-import DreamMode from './DreamMode';
 import BudgetList from './BudgetList';
 import ProjectDetail from './ProjectDetail';
 import { DashboardSkeleton, BudgetListSkeleton } from './LoadingSkeleton';
 import { AnimatePresence, motion } from 'framer-motion';
+
+const DreamMode = lazy(() => import('./DreamMode'));
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -79,6 +80,31 @@ export default function Dashboard() {
       }
     }
   };
+
+  const handleUpdateProject = async (projectId: string, updates: Partial<ProjectMetadata>) => {
+    try {
+      const updatedProject = await updateProject(projectId, updates);
+      setProjects(projects.map(p => p.id === projectId ? updatedProject : p));
+      setSelectedProject(updatedProject); // Actualiza el proyecto seleccionado también
+      setError(null);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to update project.');
+    }
+  };
+
+  const handleDeleteProject = async (projectId: string) => {
+    if (window.confirm('Are you sure you want to delete this project?')) {
+      try {
+        await deleteProject(projectId);
+        setProjects(projects.filter(p => p.id !== projectId));
+        setSelectedProject(null); // Cierra el detalle
+        setError(null);
+      } catch (err: any) {
+        setError(err.response?.data?.detail || 'Failed to delete project.');
+      }
+    }
+  };
+
 
   const handleBudgetCapture = async (file: File, instruction: string) => {
     setAnalyzingBudget(true);
@@ -341,7 +367,15 @@ export default function Dashboard() {
 
       {/* Dream Mode Modal */}
       <AnimatePresence>
-        {showDreamMode && <DreamMode onClose={() => setShowDreamMode(false)} />}
+        {showDreamMode && (
+          <Suspense fallback={
+            <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center">
+                <div className="w-16 h-16 border-4 border-neon-cyan/30 border-t-neon-cyan rounded-full animate-spin"></div>
+            </div>
+          }>
+            <DreamMode onClose={() => setShowDreamMode(false)} />
+          </Suspense>
+        )}
       </AnimatePresence>
 
       {/* Project Detail Modal */}
@@ -350,6 +384,8 @@ export default function Dashboard() {
           <ProjectDetail
             project={selectedProject}
             onClose={() => setSelectedProject(null)}
+            onUpdate={handleUpdateProject}
+            onDelete={handleDeleteProject}
           />
         )}
       </AnimatePresence>

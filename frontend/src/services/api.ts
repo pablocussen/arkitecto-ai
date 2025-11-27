@@ -39,11 +39,13 @@ export const analyzeBudget = async (
 };
 
 export const generateSketch = async (
-  imageFile: File,
+  imageFile: File | null,
   prompt: string
 ): Promise<{ success: boolean; generated_image?: string; error?: string }> => {
   const formData = new FormData();
-  formData.append('image', imageFile);
+  if (imageFile) {
+    formData.append('image', imageFile);
+  }
   formData.append('prompt', prompt);
 
   const response = await publicApi.post('/generate_sketch', formData, {
@@ -62,6 +64,15 @@ export const getProjects = async (): Promise<Project[]> => {
 export const createProject = async (projectMetadata: Partial<ProjectMetadata>): Promise<Project> => {
   const response = await apiClient.post<Project>('/api/v1/projects', projectMetadata);
   return response.data;
+};
+
+export const updateProject = async (projectId: string, projectMetadata: Partial<ProjectMetadata>): Promise<Project> => {
+  const response = await apiClient.put<Project>(`/api/v1/projects/${projectId}`, projectMetadata);
+  return response.data;
+};
+
+export const deleteProject = async (projectId: string): Promise<void> => {
+  await apiClient.delete(`/api/v1/projects/${projectId}`);
 };
 
 // =====================================================

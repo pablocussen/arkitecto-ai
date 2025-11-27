@@ -1,73 +1,106 @@
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Project } from '../types'
+import { useState, useEffect, memo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Project, ProjectMetadata, BudgetItem } from '../types';
 
 interface ProjectDetailProps {
-  project: Project
-  onClose: () => void
-  onUpdate?: (project: Project) => void
-  onDelete?: (projectId: string) => void
+  project: Project;
+  onClose: () => void;
+  onUpdate: (projectId: string, updates: Partial<ProjectMetadata>) => void;
+  onDelete: (projectId: string) => void;
 }
 
-export default function ProjectDetail({ project, onClose, onUpdate, onDelete }: ProjectDetailProps) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [title, setTitle] = useState(project.metadata.title)
-  const [description, setDescription] = useState(project.metadata.description || '')
-  const [status, setStatus] = useState(project.metadata.status)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+const ProjectDetail = ({ project, onClose, onUpdate, onDelete }: ProjectDetailProps) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  // Use a state to manage the edited project data
+  const [editableMetadata, setEditableMetadata] = useState<Partial<ProjectMetadata>>({
+    title: project.metadata.title,
+    description: project.metadata.description || '',
+    status: project.metadata.status,
+  });
+
+  // Keep the editable state in sync if the project prop changes
+  useEffect(() => {
+    setEditableMetadata({
+      title: project.metadata.title,
+      description: project.metadata.description || '',
+      status: project.metadata.status,
+    });
+  }, [project]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setEditableMetadata(prev => ({ ...prev, [name]: value }));
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CL', {
       style: 'currency',
       currency: 'CLP',
-    }).format(amount)
-  }
+    }).format(amount);
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('es-CL', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
-    })
-  }
+      day: 'numeric',
+    });
+  };
 
   const statusColors: { [key: string]: string } = {
     draft: 'bg-gray-500/20 text-gray-400',
     budgeted: 'bg-blue-500/20 text-blue-400',
     approved: 'bg-purple-500/20 text-purple-400',
     in_progress: 'bg-yellow-500/20 text-yellow-400',
-    completed: 'bg-green-500/20 text-green-400'
-  }
+    completed: 'bg-green-500/20 text-green-400',
+  };
 
   const statusLabels: { [key: string]: string } = {
     draft: 'Borrador',
     budgeted: 'Presupuestado',
     approved: 'Aprobado',
     in_progress: 'En Progreso',
-    completed: 'Completado'
-  }
+    completed: 'Completado',
+  };
 
   const handleSave = () => {
-    if (onUpdate) {
-      onUpdate({
-        ...project,
-        metadata: {
-          ...project.metadata,
-          title,
-          description,
-          status
-        }
-      })
-    }
-    setIsEditing(false)
-  }
+    onUpdate(project.id, editableMetadata);
+    setIsEditing(false);
+  };
 
   const handleDelete = () => {
-    if (onDelete && project.id) {
-      onDelete(project.id)
-      onClose()
-    }
-  }
+    onDelete(project.id);
+    onClose();
+  };
+
+  const handleAddBudgetItem = () => {
+    const elemento = prompt("Nombre del item/partida:");
+    if (!elemento) return;
+    const cantidad = parseFloat(prompt("Cantidad:") || "0");
+    const unidad = prompt("Unidad (e.g., m2, ml, kg):");
+    if (!unidad) return;
+    const precio_unitario = parseFloat(prompt("Precio Unitario:") || "0");
+
+    const newItem: BudgetItem = {
+      elemento,
+      descripcion: '', // Simplified for now
+      cantidad,
+      unidad,
+      precio_unitario,
+      subtotal: cantidad * precio_unitario,
+    };
+
+    const currentBudget = project.budget || { items: [], total_final: 0 };
+    const updatedBudget = {
+      ...currentBudget,
+      items: [...currentBudget.items, newItem],
+      total_final: currentBudget.items.reduce((sum, item) => sum + item.subtotal, 0) + newItem.subtotal,
+    };
+
+    onUpdate(project.id, { budget: updatedBudget });
+  };
 
   return (
     <motion.div
@@ -90,8 +123,9 @@ export default function ProjectDetail({ project, onClose, onUpdate, onDelete }: 
             {isEditing ? (
               <input
                 type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                name="title"
+                value={editableMetadata.title}
+                onChange={handleInputChange}
                 className="text-2xl font-bold bg-transparent border-b-2 border-neon-cyan/50 text-white focus:outline-none w-full"
               />
             ) : (
@@ -116,8 +150,9 @@ export default function ProjectDetail({ project, onClose, onUpdate, onDelete }: 
           <label className="block text-sm font-medium text-gray-400 mb-2">Estado</label>
           {isEditing ? (
             <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as typeof status)}
+              name="status"
+              value={editableMetadata.status}
+              onChange={handleInputChange}
               className="w-full px-4 py-2 glass rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-neon-cyan/50 border border-white/10"
             >
               <option value="draft">Borrador</option>
@@ -127,8 +162,8 @@ export default function ProjectDetail({ project, onClose, onUpdate, onDelete }: 
               <option value="completed">Completado</option>
             </select>
           ) : (
-            <span className={`inline-block px-3 py-1 rounded-full text-sm ${statusColors[status]}`}>
-              {statusLabels[status]}
+            <span className={`inline-block px-3 py-1 rounded-full text-sm ${statusColors[project.metadata.status]}`}>
+              {statusLabels[project.metadata.status]}
             </span>
           )}
         </div>
@@ -138,15 +173,20 @@ export default function ProjectDetail({ project, onClose, onUpdate, onDelete }: 
           <label className="block text-sm font-medium text-gray-400 mb-2">Descripcion</label>
           {isEditing ? (
             <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              name="description"
+              value={editableMetadata.description}
+              onChange={handleInputChange}
               rows={3}
               placeholder="Describe el proyecto..."
               className="w-full px-4 py-2 glass rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-cyan/50 border border-white/10"
             />
           ) : (
             <p className="text-gray-300">
-              {project.metadata.description || 'Sin descripcion'}
+              {project.metadata.description || (
+                <button onClick={() => setIsEditing(true)} className="text-neon-cyan hover:underline">
+                  Añadir descripción
+                </button>
+              )}
             </p>
           )}
         </div>
@@ -154,12 +194,19 @@ export default function ProjectDetail({ project, onClose, onUpdate, onDelete }: 
         {/* Budget Summary */}
         {project.budget && project.budget.items && project.budget.items.length > 0 && (
           <div className="mb-6 glass p-4 rounded-xl border border-neon-cyan/20">
-            <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-              <svg className="w-5 h-5 text-neon-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Resumen Presupuesto
-            </h3>
+      <h3 className="text-lg font-semibold text-white mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <svg className="w-5 h-5 text-neon-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Resumen Presupuesto</span>
+        </div>
+        <button onClick={handleAddBudgetItem} className="text-sm font-semibold text-neon-cyan hover:text-white transition-colors p-1 rounded-full hover:bg-neon-cyan/20">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+        </button>
+      </h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <span className="text-gray-400 text-sm">Partidas</span>
@@ -175,19 +222,7 @@ export default function ProjectDetail({ project, onClose, onUpdate, onDelete }: 
           </div>
         )}
 
-        {/* Location */}
-        {project.metadata.location && (
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-400 mb-2">Ubicacion</label>
-            <div className="flex items-center gap-2 text-gray-300">
-              <svg className="w-5 h-5 text-neon-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <span>{project.metadata.location.address}, {project.metadata.location.city}</span>
-            </div>
-          </div>
-        )}
+        {/* TODO: Add budget item form here */}
 
         {/* Actions */}
         <div className="flex gap-3 pt-4 border-t border-white/10">
@@ -267,5 +302,7 @@ export default function ProjectDetail({ project, onClose, onUpdate, onDelete }: 
         </AnimatePresence>
       </motion.div>
     </motion.div>
-  )
+  );
 }
+
+export default memo(ProjectDetail);

@@ -302,31 +302,34 @@ async def analyze_budget(image: Optional[UploadFile] = File(None), instruction: 
     return generate_budget_offline(instruction)
 
 @app.post("/generate_sketch")
-async def generate_sketch(image: UploadFile = File(...), prompt: str = Form(...)):
+async def generate_sketch(image: Optional[UploadFile] = File(None), prompt: str = Form(...)):
     print(f"\n🎨 [IMAGEN] Generando render: '{prompt}'")
 
     try:
-        # 1. Analizar imagen original con Gemini para extraer contexto
-        print("📸 Analizando imagen original...")
-        img_content = await image.read()
+        context_from_image = "a construction site"
+        # 1. Analizar imagen original con Gemini para extraer contexto (si existe)
+        if image:
+            print("📸 Analizando imagen original...")
+            img_content = await image.read()
 
-        # Usar Gemini para describir la imagen
-        try:
-            vision_model = GenerativeModel("gemini-1.5-flash")
-            image_part = Part.from_data(data=img_content, mime_type=image.content_type)
+            # Usar Gemini para describir la imagen
+            try:
+                vision_model = GenerativeModel("gemini-1.5-flash")
+                image_part = Part.from_data(data=img_content, mime_type=image.content_type)
 
-            analysis_prompt = """
-            Describe esta imagen de construcción en inglés técnico.
-            Enfócate en: tipo de estructura, materiales visibles, estado de construcción,
-            elementos arquitectónicos. Máximo 100 palabras. Sin mencionar personas.
-            """
+                analysis_prompt = """
+                Describe esta imagen de construcción en inglés técnico.
+                Enfócate en: tipo de estructura, materiales visibles, estado de construcción,
+                elementos arquitectónicos. Máximo 100 palabras. Sin mencionar personas.
+                """
 
-            analysis = vision_model.generate_content([image_part, analysis_prompt])
-            context_from_image = analysis.text.strip()
-            print(f"📊 Contexto detectado: {context_from_image[:100]}...")
-        except:
-            context_from_image = "construction site"
-            print("⚠️ No se pudo analizar imagen, usando contexto genérico")
+                analysis = vision_model.generate_content([image_part, analysis_prompt])
+                context_from_image = analysis.text.strip()
+                print(f"📊 Contexto detectado: {context_from_image[:100]}...")
+            except Exception as e:
+                print(f"⚠️ No se pudo analizar imagen ({str(e)[:50]}), usando contexto genérico")
+        else:
+            print("🚫 No se proporcionó imagen, generando desde texto.")
 
         # 2. Configurar modelo de generación
         print("📡 Conectando a Vertex AI Image Generation...")
@@ -365,16 +368,16 @@ async def generate_sketch(image: UploadFile = File(...), prompt: str = Form(...)
         # 4. Convertir imagen a Base64 PNG
         print("🔄 Convirtiendo imagen a PNG...")
 
-        image = response.images[0]
+        image_obj = response.images[0]
 
         # Método 1: Usar PIL Image si está disponible
-        if hasattr(image, '_pil_image') and image._pil_image is not None:
+        if hasattr(image_obj, '_pil_image') and image_obj._pil_image is not None:
             img_buffer = io.BytesIO()
-            image._pil_image.save(img_buffer, format='PNG', optimize=True)
+            image_obj._pil_image.save(img_buffer, format='PNG', optimize=True)
             img_bytes = img_buffer.getvalue()
         # Método 2: Usar bytes directos
-        elif hasattr(image, '_image_bytes'):
-            img_bytes = image._image_bytes
+        elif hasattr(image_obj, '_image_bytes'):
+            img_bytes = image_obj._image_bytes
         else:
             raise ValueError("No se pudo extraer los bytes de la imagen generada")
 
@@ -390,6 +393,7 @@ async def generate_sketch(image: UploadFile = File(...), prompt: str = Form(...)
             "message": "Render arquitectónico generado",
             "size_kb": round(image_size_kb, 1)
         }
+
 
     except Exception as e:
         error_msg = str(e)

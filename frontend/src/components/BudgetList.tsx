@@ -1,17 +1,17 @@
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { BudgetItem } from '../types'
-import { exportToPDF, exportToExcel, exportToText, ExportData } from '../services/api'
+import { useState, memo } from 'react';
+import { motion } from 'framer-motion';
+import { BudgetItem } from '../types';
+import { exportToPDF, exportToExcel, exportToText, ExportData } from '../services/api';
 
 interface BudgetListProps {
-  items: BudgetItem[]
-  total: number
-  subtotalDirecto?: number
-  manoObra?: number
-  gastosGenerales?: number
-  imprevistos?: number
-  utilidad?: number
-  totalConIva?: number
+  items: BudgetItem[];
+  total: number;
+  subtotalDirecto?: number;
+  manoObra?: number;
+  gastosGenerales?: number;
+  imprevistos?: number;
+  utilidad?: number;
+  totalConIva?: number;
 }
 
 const BudgetList = ({
@@ -24,15 +24,15 @@ const BudgetList = ({
   utilidad,
   totalConIva
 }: BudgetListProps) => {
-  const [exporting, setExporting] = useState<'pdf' | 'excel' | 'text' | null>(null)
-  const [showCopied, setShowCopied] = useState(false)
+  const [exporting, setExporting] = useState<'pdf' | 'excel' | 'text' | null>(null);
+  const [showCopied, setShowCopied] = useState(false);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CL', {
       style: 'currency',
       currency: 'CLP',
-    }).format(amount)
-  }
+    }).format(amount);
+  };
 
   const getExportData = (): ExportData => ({
     presupuesto: {
@@ -45,95 +45,95 @@ const BudgetList = ({
       utilidad: utilidad,
       total_con_iva: totalConIva || Math.round(total * 1.19)
     }
-  })
+  });
 
   const handleExportPDF = async () => {
-    setExporting('pdf')
+    setExporting('pdf');
     try {
-      const blob = await exportToPDF(getExportData())
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `presupuesto_arkitecto_${Date.now()}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
+      const blob = await exportToPDF(getExportData());
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `presupuesto_arkitecto_${Date.now()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
     } catch (error) {
-      console.error('Error exporting PDF:', error)
+      console.error('Error exporting PDF:', error);
     } finally {
-      setExporting(null)
+      setExporting(null);
     }
-  }
+  };
 
   const handleExportExcel = async () => {
-    setExporting('excel')
+    setExporting('excel');
     try {
-      const blob = await exportToExcel(getExportData())
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `presupuesto_arkitecto_${Date.now()}.xlsx`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
+      const blob = await exportToExcel(getExportData());
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `presupuesto_arkitecto_${Date.now()}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
     } catch (error) {
-      console.error('Error exporting Excel:', error)
+      console.error('Error exporting Excel:', error);
     } finally {
-      setExporting(null)
+      setExporting(null);
     }
-  }
+  };
 
   const handleCopyText = async () => {
-    setExporting('text')
+    setExporting('text');
     try {
-      const response = await exportToText(getExportData())
+      const response = await exportToText(getExportData());
       if (response.success) {
-        await navigator.clipboard.writeText(response.text)
-        setShowCopied(true)
-        setTimeout(() => setShowCopied(false), 2000)
+        await navigator.clipboard.writeText(response.text);
+        setShowCopied(true);
+        setTimeout(() => setShowCopied(false), 2000);
       }
     } catch (error) {
-      console.error('Error copying text:', error)
+      console.error('Error copying text:', error);
     } finally {
-      setExporting(null)
+      setExporting(null);
     }
-  }
+  };
 
   const generateShareText = () => {
-    const totalIva = totalConIva || Math.round(total * 1.19)
-    let text = `*PRESUPUESTO ARKITECTO AI*\n`
-    text += `━━━━━━━━━━━━━━━━━━━\n\n`
-    text += `📋 *${items.length} Partidas*\n\n`
+    const totalIva = totalConIva || Math.round(total * 1.19);
+    let text = `*PRESUPUESTO ARKITECTO AI*\n`;
+    text += `━━━━━━━━━━━━━━━━━━━\n\n`;
+    text += `📋 *${items.length} Partidas*\n\n`;
     items.slice(0, 5).forEach((item, i) => {
-      text += `${i + 1}. ${item.elemento}\n`
-      text += `   ${formatCurrency(item.subtotal)}\n`
-    })
+      text += `${i + 1}. ${item.elemento}\n`;
+      text += `   ${formatCurrency(item.subtotal)}\n`;
+    });
     if (items.length > 5) {
-      text += `\n... y ${items.length - 5} partidas mas\n`
+      text += `\n... y ${items.length - 5} partidas mas\n`;
     }
-    text += `\n━━━━━━━━━━━━━━━━━━━\n`
-    text += `💰 *Total Neto:* ${formatCurrency(total)}\n`
-    text += `📊 *IVA (19%):* ${formatCurrency(Math.round(total * 0.19))}\n`
-    text += `✅ *TOTAL:* ${formatCurrency(totalIva)}\n\n`
-    text += `_Generado con Arkitecto AI PRO_`
-    return text
-  }
+    text += `\n━━━━━━━━━━━━━━━━━━━\n`;
+    text += `💰 *Total Neto:* ${formatCurrency(total)}\n`;
+    text += `📊 *IVA (19%):* ${formatCurrency(Math.round(total * 0.19))}\n`;
+    text += `✅ *TOTAL:* ${formatCurrency(totalIva)}\n\n`;
+    text += `_Generado con Arkitecto AI PRO_`;
+    return text;
+  };
 
   const handleShareWhatsApp = async () => {
-    const text = generateShareText()
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`
-    window.open(url, '_blank')
-  }
+    const text = generateShareText();
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
 
   const handleShareEmail = async () => {
-    const totalIva = totalConIva || Math.round(total * 1.19)
-    const subject = `Presupuesto Arkitecto AI - ${formatCurrency(totalIva)}`
-    const body = generateShareText().replace(/\*/g, '').replace(/━/g, '-')
-    const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-    window.location.href = url
-  }
+    const totalIva = totalConIva || Math.round(total * 1.19);
+    const subject = `Presupuesto Arkitecto AI - ${formatCurrency(totalIva)}`;
+    const body = generateShareText().replace(/\*/g, '').replace(/━/g, '-');
+    const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = url;
+  };
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -366,7 +366,7 @@ const BudgetList = ({
         </div>
       </motion.div>
     </div>
-  )
-}
+  );
+};
 
-export default BudgetList
+export default memo(BudgetList);
