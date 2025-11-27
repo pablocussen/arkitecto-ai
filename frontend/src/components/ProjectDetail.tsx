@@ -202,36 +202,112 @@ const ProjectDetail = ({ project, onClose, onUpdate, onDelete }: ProjectDetailPr
           )}
         </div>
 
-        {/* Budget Summary */}
-        {project.budget && project.budget.items && project.budget.items.length > 0 && (
-          <div className="mb-6 glass p-4 rounded-xl border border-neon-cyan/20">
-      <h3 className="text-lg font-semibold text-white mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <svg className="w-5 h-5 text-neon-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>Resumen Presupuesto</span>
-        </div>
-        <button onClick={() => setShowAddItemForm(true)} className="text-sm font-semibold text-neon-cyan hover:text-white transition-colors p-1 rounded-full hover:bg-neon-cyan/20">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-        </button>
-      </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-gray-400 text-sm">Partidas</span>
-                <p className="text-white font-semibold">{project.budget.items.length}</p>
-              </div>
-              <div>
-                <span className="text-gray-400 text-sm">Total Final</span>
-                <p className="text-neon-cyan font-bold text-lg">
-                  {formatCurrency(project.budget.total_final)}
-                </p>
-              </div>
+        {/* Budget Section */}
+        <div className="mb-6 glass p-4 rounded-xl border border-neon-cyan/20">
+          <h3 className="text-lg font-semibold text-white mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-neon-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Presupuesto</span>
             </div>
-          </div>
-        )}
+            <button
+              onClick={() => setShowAddItemForm(true)}
+              className="text-sm font-semibold text-neon-cyan hover:text-white transition-colors p-1 rounded-full hover:bg-neon-cyan/20"
+              title="Agregar partida"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          </h3>
+
+          {project.budget && project.budget.items && project.budget.items.length > 0 ? (
+            <>
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="glass-strong p-3 rounded-lg">
+                  <span className="text-gray-400 text-xs">Partidas</span>
+                  <p className="text-white font-semibold text-lg">{project.budget.items.length}</p>
+                </div>
+                <div className="glass-strong p-3 rounded-lg">
+                  <span className="text-gray-400 text-xs">Total Final</span>
+                  <p className="text-neon-cyan font-bold text-lg">
+                    {formatCurrency(project.budget.total_final)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Itemized List */}
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {project.budget.items.map((item, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="glass-strong p-3 rounded-lg border border-white/5 hover:border-neon-cyan/30 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-white font-semibold text-sm truncate">
+                            {item.elemento}
+                          </span>
+                          <span className="text-xs text-gray-500 flex-shrink-0">
+                            {item.cantidad} {item.unidad}
+                          </span>
+                        </div>
+                        {item.descripcion && (
+                          <p className="text-xs text-gray-400 mb-1 truncate">{item.descripcion}</p>
+                        )}
+                        <div className="flex items-center gap-3 text-xs">
+                          <span className="text-gray-400">
+                            {formatCurrency(item.precio_unitario)} / {item.unidad}
+                          </span>
+                          <span className="text-neon-banana font-semibold">
+                            {formatCurrency(item.subtotal)}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const updatedItems = project.budget.items.filter((_, i) => i !== index);
+                          const newTotal = updatedItems.reduce((sum, item) => sum + item.subtotal, 0);
+                          onUpdate(project.id, {
+                            budget: {
+                              ...project.budget,
+                              items: updatedItems,
+                              total_final: newTotal
+                            }
+                          });
+                        }}
+                        className="p-1.5 hover:bg-red-500/20 rounded-lg transition-colors text-red-400 hover:text-red-300 flex-shrink-0"
+                        title="Eliminar partida"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <svg className="w-12 h-12 text-gray-600 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <p className="text-gray-400 text-sm mb-2">Sin partidas presupuestarias</p>
+              <button
+                onClick={() => setShowAddItemForm(true)}
+                className="text-neon-cyan hover:text-white text-sm transition-colors"
+              >
+                Agregar primera partida →
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Add Budget Item Form */}
         <AnimatePresence>
