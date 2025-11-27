@@ -12,7 +12,15 @@ interface ProjectDetailProps {
 const ProjectDetail = ({ project, onClose, onUpdate, onDelete }: ProjectDetailProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  
+  const [showAddItemForm, setShowAddItemForm] = useState(false);
+  const [newItem, setNewItem] = useState({
+    elemento: '',
+    descripcion: '',
+    cantidad: '',
+    unidad: '',
+    precio_unitario: ''
+  });
+
   // Use a state to manage the edited project data
   const [editableMetadata, setEditableMetadata] = useState<Partial<ProjectMetadata>>({
     title: project.metadata.title,
@@ -76,18 +84,19 @@ const ProjectDetail = ({ project, onClose, onUpdate, onDelete }: ProjectDetailPr
   };
 
   const handleAddBudgetItem = () => {
-    const elemento = prompt("Nombre del item/partida:");
-    if (!elemento) return;
-    const cantidad = parseFloat(prompt("Cantidad:") || "0");
-    const unidad = prompt("Unidad (e.g., m2, ml, kg):");
-    if (!unidad) return;
-    const precio_unitario = parseFloat(prompt("Precio Unitario:") || "0");
+    const cantidad = parseFloat(newItem.cantidad);
+    const precio_unitario = parseFloat(newItem.precio_unitario);
 
-    const newItem: BudgetItem = {
-      elemento,
-      descripcion: '', // Simplified for now
+    if (!newItem.elemento || isNaN(cantidad) || !newItem.unidad || isNaN(precio_unitario)) {
+      alert('Por favor completa todos los campos');
+      return;
+    }
+
+    const budgetItem: BudgetItem = {
+      elemento: newItem.elemento,
+      descripcion: newItem.descripcion,
       cantidad,
-      unidad,
+      unidad: newItem.unidad,
       precio_unitario,
       subtotal: cantidad * precio_unitario,
     };
@@ -95,11 +104,13 @@ const ProjectDetail = ({ project, onClose, onUpdate, onDelete }: ProjectDetailPr
     const currentBudget = project.budget || { items: [], total_final: 0 };
     const updatedBudget = {
       ...currentBudget,
-      items: [...currentBudget.items, newItem],
-      total_final: currentBudget.items.reduce((sum, item) => sum + item.subtotal, 0) + newItem.subtotal,
+      items: [...currentBudget.items, budgetItem],
+      total_final: currentBudget.items.reduce((sum, item) => sum + item.subtotal, 0) + budgetItem.subtotal,
     };
 
     onUpdate(project.id, { budget: updatedBudget });
+    setNewItem({ elemento: '', descripcion: '', cantidad: '', unidad: '', precio_unitario: '' });
+    setShowAddItemForm(false);
   };
 
   return (
@@ -201,7 +212,7 @@ const ProjectDetail = ({ project, onClose, onUpdate, onDelete }: ProjectDetailPr
           </svg>
           <span>Resumen Presupuesto</span>
         </div>
-        <button onClick={handleAddBudgetItem} className="text-sm font-semibold text-neon-cyan hover:text-white transition-colors p-1 rounded-full hover:bg-neon-cyan/20">
+        <button onClick={() => setShowAddItemForm(true)} className="text-sm font-semibold text-neon-cyan hover:text-white transition-colors p-1 rounded-full hover:bg-neon-cyan/20">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
@@ -222,7 +233,101 @@ const ProjectDetail = ({ project, onClose, onUpdate, onDelete }: ProjectDetailPr
           </div>
         )}
 
-        {/* TODO: Add budget item form here */}
+        {/* Add Budget Item Form */}
+        <AnimatePresence>
+          {showAddItemForm && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="glass p-4 rounded-xl border border-neon-cyan/20 mb-4"
+            >
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-neon-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Agregar Partida
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Elemento *</label>
+                  <input
+                    type="text"
+                    value={newItem.elemento}
+                    onChange={(e) => setNewItem({ ...newItem, elemento: e.target.value })}
+                    placeholder="Ej: Pintura latex"
+                    className="w-full px-3 py-2 glass rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-cyan/50 border border-white/10"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Descripción</label>
+                  <input
+                    type="text"
+                    value={newItem.descripcion}
+                    onChange={(e) => setNewItem({ ...newItem, descripcion: e.target.value })}
+                    placeholder="Detalles adicionales (opcional)"
+                    className="w-full px-3 py-2 glass rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-cyan/50 border border-white/10"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Cantidad *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={newItem.cantidad}
+                    onChange={(e) => setNewItem({ ...newItem, cantidad: e.target.value })}
+                    placeholder="0"
+                    className="w-full px-3 py-2 glass rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-cyan/50 border border-white/10"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Unidad *</label>
+                  <input
+                    type="text"
+                    value={newItem.unidad}
+                    onChange={(e) => setNewItem({ ...newItem, unidad: e.target.value })}
+                    placeholder="m2, ml, un"
+                    className="w-full px-3 py-2 glass rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-cyan/50 border border-white/10"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Precio Unitario *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={newItem.precio_unitario}
+                    onChange={(e) => setNewItem({ ...newItem, precio_unitario: e.target.value })}
+                    placeholder="0.00"
+                    className="w-full px-3 py-2 glass rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-cyan/50 border border-white/10"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => {
+                    setShowAddItemForm(false);
+                    setNewItem({ elemento: '', descripcion: '', cantidad: '', unidad: '', precio_unitario: '' });
+                  }}
+                  className="flex-1 px-4 py-2 glass rounded-lg hover:bg-white/10 transition-colors text-gray-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleAddBudgetItem}
+                  className="flex-1 px-4 py-2 bg-neon-cyan text-dark-950 font-semibold rounded-lg hover:bg-neon-cyan/90 transition-colors"
+                >
+                  Agregar
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Actions */}
         <div className="flex gap-3 pt-4 border-t border-white/10">
