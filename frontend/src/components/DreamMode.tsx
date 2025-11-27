@@ -38,23 +38,25 @@ const DreamMode = ({ onClose }: DreamModeProps) => {
     }
   }
 
-  const handleGenerate = async () => {
-    if (!selectedImage || !prompt.trim()) return
+const handleGenerate = async () => {
+    if (!prompt.trim()) return
 
     setIsGenerating(true)
     setError(null)
 
     try {
+      // The service now accepts a null image
       const result = await generateSketch(selectedImage, prompt)
 
       if (result.success && result.generated_image) {
         setGeneratedImage(result.generated_image)
       } else {
-        setError('No se pudo generar la imagen. Intenta con otra descripcion.')
+        setError(result.error || 'No se pudo generar la imagen. Intenta con otra descripcion.')
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error generando imagen:', err)
-      setError('Error de conexion. Verifica que el backend este corriendo.')
+      const errorMessage = err.response?.data?.detail || err.message || 'Error de conexion';
+      setError(errorMessage)
     } finally {
       setIsGenerating(false)
     }
@@ -185,7 +187,7 @@ const DreamMode = ({ onClose }: DreamModeProps) => {
           {/* Boton Generar - Siempre visible y destacado */}
           <button
             onClick={handleGenerate}
-            disabled={!selectedImage || !prompt.trim() || isGenerating}
+            disabled={!prompt.trim() || isGenerating}
             className="w-full py-4 bg-gradient-to-r from-neon-cyan to-neon-banana rounded-xl font-bold text-dark-950 text-base hover:shadow-lg hover:shadow-neon-cyan/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isGenerating ? (
