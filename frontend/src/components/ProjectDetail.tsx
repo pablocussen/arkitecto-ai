@@ -13,6 +13,7 @@ const ProjectDetail = ({ project, onClose, onUpdate, onDelete }: ProjectDetailPr
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showAddItemForm, setShowAddItemForm] = useState(false);
+  const [expandedItemIndex, setExpandedItemIndex] = useState<number | null>(null);
   const [newItem, setNewItem] = useState({
     elemento: '',
     descripcion: '',
@@ -240,57 +241,126 @@ const ProjectDetail = ({ project, onClose, onUpdate, onDelete }: ProjectDetailPr
 
               {/* Itemized List */}
               <div className="space-y-2 max-h-64 overflow-y-auto">
-                {project.budget.items.map((item, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="glass-strong p-3 rounded-lg border border-white/5 hover:border-neon-cyan/30 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-white font-semibold text-sm truncate">
-                            {item.elemento}
-                          </span>
-                          <span className="text-xs text-gray-500 flex-shrink-0">
-                            {item.cantidad} {item.unidad}
-                          </span>
-                        </div>
-                        {item.descripcion && (
-                          <p className="text-xs text-gray-400 mb-1 truncate">{item.descripcion}</p>
-                        )}
-                        <div className="flex items-center gap-3 text-xs">
-                          <span className="text-gray-400">
-                            {formatCurrency(item.precio_unitario)} / {item.unidad}
-                          </span>
-                          <span className="text-neon-banana font-semibold">
-                            {formatCurrency(item.subtotal)}
-                          </span>
-                        </div>
-                      </div>
+                {project.budget.items.map((item, index) => {
+                  const isExpanded = expandedItemIndex === index;
+                  return (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="glass-strong rounded-lg border border-white/5 hover:border-neon-cyan/30 transition-colors overflow-hidden"
+                    >
+                      {/* Clickeable Header */}
                       <button
-                        onClick={() => {
-                          const updatedItems = project.budget.items.filter((_, i) => i !== index);
-                          const newTotal = updatedItems.reduce((sum, item) => sum + item.subtotal, 0);
-                          onUpdate(project.id, {
-                            budget: {
-                              ...project.budget,
-                              items: updatedItems,
-                              total_final: newTotal
-                            }
-                          });
-                        }}
-                        className="p-1.5 hover:bg-red-500/20 rounded-lg transition-colors text-red-400 hover:text-red-300 flex-shrink-0"
-                        title="Eliminar partida"
+                        onClick={() => setExpandedItemIndex(isExpanded ? null : index)}
+                        className="w-full p-3 text-left hover:bg-white/5 transition-colors"
                       >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-white font-semibold text-sm truncate">
+                                {item.elemento}
+                              </span>
+                              <span className="text-xs text-gray-500 flex-shrink-0">
+                                {item.cantidad} {item.unidad}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3 text-xs">
+                              <span className="text-gray-400">
+                                {formatCurrency(item.precio_unitario)} / {item.unidad}
+                              </span>
+                              <span className="text-neon-banana font-semibold">
+                                {formatCurrency(item.subtotal)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <svg
+                              className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
                       </button>
-                    </div>
-                  </motion.div>
-                ))}
+
+                      {/* Expanded Details */}
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="border-t border-white/10"
+                          >
+                            <div className="p-3 space-y-3 bg-white/5">
+                              {/* Descripción completa */}
+                              {item.descripcion && (
+                                <div>
+                                  <span className="text-xs text-gray-500 block mb-1">Descripción</span>
+                                  <p className="text-sm text-gray-300">{item.descripcion}</p>
+                                </div>
+                              )}
+
+                              {/* APU Origen */}
+                              {item.apu_origen && (
+                                <div>
+                                  <span className="text-xs text-gray-500 block mb-1">Código APU</span>
+                                  <span className="inline-block px-2 py-1 text-xs bg-neon-cyan/20 text-neon-cyan rounded border border-neon-cyan/30">
+                                    {item.apu_origen}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Desglose de costos */}
+                              <div className="grid grid-cols-2 gap-3 text-xs">
+                                <div>
+                                  <span className="text-gray-500 block">Cantidad</span>
+                                  <span className="text-white font-semibold">{item.cantidad} {item.unidad}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 block">Precio Unitario</span>
+                                  <span className="text-white font-semibold">{formatCurrency(item.precio_unitario)}</span>
+                                </div>
+                                <div className="col-span-2">
+                                  <span className="text-gray-500 block">Subtotal</span>
+                                  <span className="text-neon-banana font-bold text-base">{formatCurrency(item.subtotal)}</span>
+                                </div>
+                              </div>
+
+                              {/* Botón eliminar en expanded view */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const updatedItems = project.budget.items.filter((_, i) => i !== index);
+                                  const newTotal = updatedItems.reduce((sum, item) => sum + item.subtotal, 0);
+                                  onUpdate(project.id, {
+                                    budget: {
+                                      ...project.budget,
+                                      items: updatedItems,
+                                      total_final: newTotal
+                                    }
+                                  });
+                                  setExpandedItemIndex(null);
+                                }}
+                                className="w-full py-2 px-3 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-colors text-red-400 hover:text-red-300 text-sm font-medium flex items-center justify-center gap-2"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Eliminar Partida
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  );
+                })}
               </div>
             </>
           ) : (

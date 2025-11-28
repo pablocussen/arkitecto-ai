@@ -47,7 +47,8 @@
       "Bash(\"C:\\Users\\pablo\\AppData\\Local\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd\" run deploy arkitecto-api --source \"g:\\Mi unidad\\Proyectos\\3-IA\\arkitecto-ai\\backend\" --region us-central1 --platform managed --allow-unauthenticated --set-env-vars=\"GOOGLE_CLOUD_PROJECT=arkitecto-ai-pro-v1\" --project=arkitecto-ai-pro-v1 --quiet)",
       "Bash(gcloud run deploy:*)",
       "Bash(Select-Object -First 20)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

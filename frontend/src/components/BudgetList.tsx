@@ -361,7 +361,7 @@ const BudgetList = ({
 
           {/* Disclaimer */}
           <p className="text-xs text-gray-500 mt-4 text-center">
-            Precios estimados basados en catalogo APU profesional (ONDAC/CDT compatible) - CLP 2024/2025
+            Precios estimados basados en catálogo APU profesional chileno - CLP 2024/2025
           </p>
         </div>
       </motion.div>
