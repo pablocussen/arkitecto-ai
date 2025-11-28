@@ -235,7 +235,7 @@ def generate_budget_pdf(presupuesto: dict, metadata: dict = None, client_info: d
     elements.append(Paragraph("Notas y Condiciones", section_style))
 
     notes = [
-        "• Precios basados en catalogo APU profesional (ONDAC/CDT compatible)",
+        "• Precios basados en catalogo APU profesional",
         "• Valores en Pesos Chilenos (CLP) - Precios de mercado 2024/2025",
         "• Presupuesto valido por 30 dias desde la fecha de emision",
         "• No incluye permisos municipales ni derechos de construccion",

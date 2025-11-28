@@ -2,7 +2,6 @@
 ARKITECTO AI - Catalogo APU Profesional v2.0
 Sistema avanzado de presupuestos de construccion
 Precios reales de mercado chileno (CLP) - 2024/2025
-+100 partidas con codigos ONDAC/CDT compatibles
 """
 
 # APUs organizados por categorias profesionales

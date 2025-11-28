@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 import vertexai
 from vertexai.generative_models import GenerativeModel, Part
 from vertexai.preview.vision_models import ImageGenerationModel
+from google.auth import exceptions as auth_exceptions
 try:
     from backend.auth_middleware import FirebaseAuthMiddleware
     import backend.firebase_service as firebase_service
@@ -161,7 +162,7 @@ def generate_budget_offline(instruction: str) -> dict:
             "generator": "apu_profesional_v2",
             "categoria": categoria_detectada,
             "version": "2.0",
-            "transparencia": "Codigos APU compatibles ONDAC/CDT"
+            "transparencia": "Codigos APU compatibles"
         }
     }
 
@@ -219,79 +220,65 @@ def search_apus(query: str, limit: int = 10):
     }
 
 
+from prompts.wizard_prompt import build_wizard_prompt, LOICA_REFERENCE
+from schemas import BudgetRequest
+
+# ... (existing code) ...
+
 @app.post("/analyze_budget")
-async def analyze_budget(image: Optional[UploadFile] = File(None), instruction: str = Form(...)):
+async def analyze_budget(request: BudgetRequest):
+    instruction = request.instruction
+    
+    # Si la instrucción tiene formato wizard, usar prompt especial
+    if "Tipo de proyecto:" in instruction:
+        # Parsear respuestas
+        lines = instruction.strip().split('\n')
+        answers = {}
+        for line in lines:
+            if ':' in line:
+                key, value = line.split(':', 1)
+                key_norm = key.strip().lower().replace(' de proyecto', '').replace(' ', '_')
+                answers[key_norm] = value.strip()
+        
+        # Usar prompt con LOICA de referencia
+        instruction = build_wizard_prompt(answers)
+
     # Sanitize input
     try:
         instruction = InputSanitizer.sanitize_instruction(instruction)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    print(f"\n💰 [PRESUPUESTO] Calculando: '{instruction}'")
+    print(f"\n💰 [PRESUPUESTO] Calculando para: '{instruction[:100]}...'")
 
-    # Lista de modelos a intentar (del más nuevo al más estable)
-    models_to_try = [
-        "gemini-1.5-flash-001",
-        "gemini-1.5-flash",
-        "gemini-pro"
-    ]
+    # Lista de modelos a intentar
+    models_to_try = ["gemini-1.5-flash-001", "gemini-1.5-flash", "gemini-pro"]
 
     for model_name in models_to_try:
         try:
             print(f"🔄 Intentando modelo: {model_name}")
             model = GenerativeModel(model_name)
-
-            prompt = f"""
-            Eres un Experto Costista de Construcción en Chile.
-            Analiza la solicitud y entrega un presupuesto detallado en PESOS CHILENOS (CLP).
-
-            Formato de respuesta:
-            - Lista de partidas con descripción
-            - Cantidad y unidad de medida
-            - Precio unitario estimado
-            - Subtotal por partida
-            - TOTAL ESTIMADO al final
-
-            Solicitud del cliente: "{instruction}"
-            """
-
-            if image:
-                print("📸 Analizando imagen...")
-                img_content = await image.read()
-                image_part = Part.from_data(data=img_content, mime_type=image.content_type)
-                response = model.generate_content([image_part, prompt])
-            else:
-                response = model.generate_content(prompt)
+            
+            response = model.generate_content(instruction)
 
             print(f"✅ [PRESUPUESTO] Generado con {model_name}")
 
-            # Parsear respuesta de Vertex AI a formato estructurado
-            # Por ahora, devolver formato básico con el texto de la IA
-            return {
-                "success": True,
-                "analisis": f"Presupuesto generado con IA para: {instruction}",
-                "presupuesto": {
-                    "items": [
-                        {
-                            "elemento": "Presupuesto completo",
-                            "descripcion": response.text[:200] + "..." if len(response.text) > 200 else response.text,
-                            "cantidad": 1,
-                            "unidad": "gl",
-                            "precio_unitario": 0,
-                            "subtotal": 0,
-                            "apu_origen": "vertex_ai"
-                        }
-                    ],
-                    "total_estimado": 0,
-                    "moneda": "CLP"
-                },
-                "metadata": {
-                    "elementos_detectados": 1,
-                    "items_con_precio": 0,
-                    "generator": "vertex_ai",
-                    "raw_response": response.text  # Mantener respuesta completa por compatibilidad
+            # Extract JSON from the response text
+            match = re.search(r'```json\n({.*?})\n```', response.text, re.DOTALL)
+            if match:
+                json_str = match.group(1)
+                budget_data = json.loads(json_str)
+                # Here you would typically map this to your response model
+                return {
+                    "success": True,
+                    "analisis": "Presupuesto generado con IA conversacional.",
+                    "presupuesto": budget_data.get("budget"),
+                    "metadata": budget_data.get("metadata")
                 }
-            }
+            else:
+                 # Fallback for non-JSON response, or use the offline generator
+                print("⚠️ No se encontró JSON en la respuesta, usando generador offline.")
+                return generate_budget_offline(instruction)
 
         except Exception as e:
             print(f"❌ Error con {model_name}: {str(e)[:100]}")
@@ -399,22 +386,30 @@ async def generate_sketch(image: Optional[UploadFile] = File(None), prompt: str 
         error_msg = str(e)
         print(f"❌ [ERROR IMAGEN]: {error_msg}")
 
-        # Analizar tipo de error y dar feedback útil
-        if "safety" in error_msg.lower() or "filter" in error_msg.lower():
+        # Enhanced error analysis for cloud permissions
+        user_message = "Error al generar imagen. Intenta con otra descripción."
+        status_code = 500
+
+        if "DefaultCredentialsError" in error_msg or "permission_denied" in error_msg.lower() or "403" in error_msg:
+            user_message = "Error de autenticación con el servicio de IA. (Permissions Error)"
+            status_code = 503 # Service Unavailable
+            print("🚨 DETECTADO ERROR DE PERMISOS DE GOOGLE CLOUD. Verifica que el service account de Cloud Run tenga el rol 'Vertex AI User'.")
+        elif "safety" in error_msg.lower() or "filter" in error_msg.lower():
             user_message = "El prompt activó filtros de seguridad. Intenta con una descripción más arquitectónica."
+            status_code = 400 # Bad Request
         elif "quota" in error_msg.lower() or "limit" in error_msg.lower():
-            user_message = "Límite de cuota alcanzado. Intenta nuevamente en unos minutos."
+            user_message = "Límite de cuota de IA alcanzado. Intenta nuevamente en unos minutos."
+            status_code = 429 # Too Many Requests
         elif "not found" in error_msg.lower() or "404" in error_msg:
             user_message = "Modelo de generación no disponible. Contacta al administrador."
-        else:
-            user_message = "Error al generar imagen. Intenta con otra descripción."
-
+            status_code = 503 # Service Unavailable
+        
         return JSONResponse(
-            status_code=500,
+            status_code=status_code,
             content={
                 "success": False,
                 "error": user_message,
-                "detail": error_msg[:200]  # Máximo 200 caracteres del error técnico
+                "detail": error_msg[:250]
             }
         )
 

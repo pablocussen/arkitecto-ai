@@ -47,3 +47,7 @@ class Project(BaseModel):
     images: Optional[dict] = None # { "original_image_url": str, "dream_renders": List[str], "progress_photos": List[dict] }
     collaborators: Optional[dict[str, Collaborator]] = None # key is userId
     timeline: Optional[dict] = None # { "milestones": List[dict], "actual_costs": List[dict] }
+
+class BudgetRequest(BaseModel):
+    instruction: str
+    image: Optional[str] = None # Optional base64 encoded image

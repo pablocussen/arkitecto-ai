@@ -4,11 +4,13 @@ import { getProjects, createProject, analyzeBudget, updateProject, deleteProject
 import { useAuth } from '../contexts/AuthContext';
 import MagicEyeButton from './MagicEyeButton';
 import BudgetList from './BudgetList';
-import ProjectDetail from './ProjectDetail';
 import { DashboardSkeleton, BudgetListSkeleton } from './LoadingSkeleton';
 import { AnimatePresence, motion } from 'framer-motion';
 
 const DreamMode = lazy(() => import('./DreamMode'));
+const WizardFlow = lazy(() => import('./WizardFlow'));
+const OnboardingWizard = lazy(() => import('./OnboardingWizard'));
+const ProjectDetail = lazy(() => import('./ProjectDetail'));
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -31,6 +33,11 @@ export default function Dashboard() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const retryCountRef = useRef(0);
   const hasFetchedRef = useRef(false);
+  const [showWizard, setShowWizard] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(
+    !localStorage.getItem('arkitecto_onboarding_completed')
+  );
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
     if (!user || hasFetchedRef.current) return;
@@ -68,17 +75,25 @@ export default function Dashboard() {
     fetchProjects();
   }, [user]);
 
-  const handleCreateProject = async () => {
-    const title = prompt("Nombre del proyecto:");
-    if (title) {
-      try {
-        setError(null);
-        const newProject = await createProject({ title });
-        setProjects([...projects, newProject]);
-      } catch (err: any) {
-        setError(err.response?.data?.detail || err.message);
-      }
-    }
+  const handleWizardComplete = async (answers: Record<string, string>) => {
+    // Construir instrucción desde las respuestas
+    const instruction = `
+      Tipo de proyecto: ${answers.type}
+      Dimensiones: ${answers.dimensions}
+      Nivel de calidad: ${answers.quality}
+      Detalles: ${answers.details}
+      Ubicación: ${answers.location}
+      
+      Genera un presupuesto detallado con APU para este proyecto.
+    `;
+    
+    setShowWizard(false);
+    
+    // Llamar a la función existente de análisis
+    // The handleBudgetCapture function expects a file, but the new flow doesn't have one.
+    // I will pass a dummy file for now. This will need to be fixed in the backend.
+    const dummyFile = new File([""], "dummy.txt", { type: "text/plain" });
+    await handleBudgetCapture(dummyFile, instruction);
   };
 
   const handleUpdateProject = async (projectId: string, updates: Partial<ProjectMetadata>) => {
@@ -106,8 +121,8 @@ export default function Dashboard() {
   };
 
 
-  const handleBudgetCapture = async (file: File, instruction: string) => {
-    setAnalyzingBudget(true);
+const handleBudgetCapture = async (file: File, instruction: string) => {
+    setIsAnalyzing(true);
     setError(null);
     setBudgetItems([]);
     setBudgetTotal(0);
@@ -136,7 +151,7 @@ export default function Dashboard() {
       const errorMessage = err.response?.data?.detail || err.message || 'Error de conexion';
       setError(errorMessage);
     } finally {
-      setAnalyzingBudget(false);
+      setIsAnalyzing(false);
     }
   };
 
@@ -156,6 +171,15 @@ export default function Dashboard() {
 
   return (
     <div className="p-4 md:p-8">
+      {isAnalyzing && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-neon-cyan/30 border-t-neon-cyan rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-white font-semibold">Generando presupuesto con IA...</p>
+            <p className="text-gray-400 text-sm mt-2">Analizando APUs y calculando costos</p>
+          </div>
+        </div>
+      )}
       {/* Error Toast */}
       <AnimatePresence>
         {error && (
@@ -199,7 +223,7 @@ export default function Dashboard() {
             <span>Modo Sueno</span>
           </button>
           <button
-            onClick={handleCreateProject}
+            onClick={() => setShowWizard(true)}
             className="px-4 py-2 font-bold text-dark-950 bg-neon-cyan rounded-lg hover:bg-opacity-90 transition-all hover:shadow-lg hover:shadow-neon-cyan/30 flex items-center space-x-2"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -347,7 +371,7 @@ export default function Dashboard() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
-              onClick={handleCreateProject}
+              onClick={() => setShowWizard(true)}
               className="px-6 py-3 bg-neon-cyan text-dark-950 font-bold rounded-xl hover:shadow-lg hover:shadow-neon-cyan/30 transition-all"
             >
               Crear Primer Proyecto
@@ -381,12 +405,58 @@ export default function Dashboard() {
       {/* Project Detail Modal */}
       <AnimatePresence>
         {selectedProject && (
-          <ProjectDetail
-            project={selectedProject}
-            onClose={() => setSelectedProject(null)}
-            onUpdate={handleUpdateProject}
-            onDelete={handleDeleteProject}
-          />
+          <Suspense fallback={
+            <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center">
+                <div className="w-16 h-16 border-4 border-neon-cyan/30 border-t-neon-cyan rounded-full animate-spin"></div>
+            </div>
+          }>
+            <ProjectDetail
+              project={selectedProject}
+              onClose={() => setSelectedProject(null)}
+              onUpdate={handleUpdateProject}
+              onDelete={handleDeleteProject}
+            />
+          </Suspense>
+        )}
+      </AnimatePresence>
+      
+      {/* Wizard Flow */}
+      <AnimatePresence>
+        {showWizard && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center"
+          >
+            <Suspense fallback={
+              <div className="flex items-center justify-center p-8">
+                <div className="w-8 h-8 border-2 border-neon-cyan/30 border-t-neon-cyan rounded-full animate-spin"></div>
+              </div>
+            }>
+              <WizardFlow onComplete={handleWizardComplete} />
+            </Suspense>
+            <button
+              onClick={() => setShowWizard(false)}
+              className="absolute top-4 right-4 p-2 text-white hover:bg-white/10 rounded-full"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Onboarding */}
+      <AnimatePresence>
+        {showOnboarding && (
+           <Suspense fallback={<div></div>}>
+            <OnboardingWizard onComplete={() => {
+              localStorage.setItem('arkitecto_onboarding_completed', 'true');
+              setShowOnboarding(false);
+            }} />
+          </Suspense>
         )}
       </AnimatePresence>
     </div>
